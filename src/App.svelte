@@ -2,6 +2,74 @@
 	import BurgerMenu from 'svelte-burger-menu';
 	import {HsvPicker} from 'svelte-color-picker';
 
+	let g_canvas_element
+	let g_canvas_container
+	let g_canvas_system
+
+	let g_doc_width = 640
+	let g_doc_height = 480
+	let g_doc_left = 100;
+	let g_doc_top = 100;
+
+	let g_calc_container_width = 2*g_doc_width
+	let g_calc_container_height = 2*g_doc_height
+
+
+	let g_calc_doc_width = g_doc_width
+	let g_calc_doc_height = g_doc_height
+
+
+	let maginification = 100
+	let calc_maginification = maginification/100.0
+	let maginifications = [
+		{ value : 400, text :"400%" },
+		{ value : 200, text :"200%" },
+		{ value : 100, text :"100%" },
+		{ value : 50, text :"50%" },
+		{ value : 25, text :"25%" },
+		{ value : -1, text :"fit to canvas" },
+		{ value : -2, text :"fit to selection" },
+		{ value : -3, text :"fit to layer content" },
+		{ value : -4, text :"fit to all" },
+	]
+
+	setTimeout(set_magnification,100)
+
+	function set_magnification(evt) {
+		if ( maginification > 0 ) {
+			if ( g_canvas_system ) {
+				//
+				calc_maginification = maginification/100;
+				g_calc_doc_width = g_doc_width*calc_maginification
+				g_calc_doc_height = g_doc_height*calc_maginification
+				//
+				let system_rect = g_canvas_system.getBoundingClientRect()
+
+				let w = system_rect.width
+				let h = system_rect.height
+				if ( g_calc_doc_width <= w ) {
+					g_calc_container_width = (w + 100)	// putting a default mat around everything allowing some small degree of scrolling
+				} else if ( g_calc_doc_width > w ) {
+					g_calc_container_width = g_calc_doc_width + 10	// putting a default mat around everything allowing some small degree of scrolling
+				}
+				if ( g_calc_doc_height <= h ) {
+					g_calc_container_height = (h + 100)	// putting a default mat around everything allowing some small degree of scrolling
+				} else if ( g_calc_doc_height > h ) {
+					g_calc_container_height = g_calc_doc_height + 10 
+				}
+
+				setTimeout(() => {
+					g_doc_left = Math.floor(g_calc_container_width/2) - Math.floor(g_calc_doc_width/2)
+					g_doc_top = Math.floor(g_calc_container_height/2) - Math.floor(g_calc_doc_height/2)
+				},20)
+
+			}
+
+		} else {
+			// TBD
+		}
+	}
+
 	let selection_mode = true
 
 	let rect_selected = true
@@ -235,12 +303,6 @@
 
 
 	let is_viz = "hidden"
-	let maginification = 100
-	let maginifications = [
-		{ value : 400, text :"400%" },
-		{ value : 200, text :"200%" },
-		{ value : 100, text :"100%" }
-	]
 
 	function colorCallback(rgba) {
 		console.log(rgba.detail)
@@ -525,7 +587,7 @@
 	<div class="bottom-menu-button" >
 		<img class="bottom-menu-item"  src="./images/zoom.svg" alt="select" title="zoom" />
 	</div>
-	<select bind:value={maginification} on:change="{() => maginification = 100}">
+	<select bind:value={maginification} style="font-size: 80%;" on:change={set_magnification}>
 		{#each maginifications as mag}
 			<option value={mag.value}>
 				{mag.text}
@@ -555,7 +617,12 @@
 	<input class="bottom-input" type=number bind:value={guass_blur_level} min="0" max="100" on:change={blurry_changed}>
 </div>
 
-<div class="canvas-panel">
+<div bind:this={g_canvas_system} class="canvas-system" >
+	<div bind:this={g_canvas_container} class="canvas-panel" style="width:{g_calc_container_width}px;height:{g_calc_container_height}px;" >
+		<canvas bind:this={g_canvas_element} style="width:{g_calc_doc_width}px;height:{g_calc_doc_height}px;left:{g_doc_left}px;top:{g_doc_top}px"  >
+	
+		</canvas>
+	</div>	
 </div>
 
 <BurgerMenu>
@@ -750,7 +817,7 @@
 		vertical-align: top;
 	}
 
-	.canvas-panel {
+	.canvas-system {
 		position: absolute;
 		--topness: 40px;
 		--leftness : 52px;
@@ -758,9 +825,23 @@
 		top: var(--topness);
 		left: var(--leftness);
 		border: solid 1px darkblue;
-		background-color: whitesmoke;
 		width: calc(100vw - (var(--leftness) + 4px));
 		height: calc(var(--b-topness) - var(--topness) - 4px);
+		overflow:auto;
+	}
+
+	.canvas-panel {
+		position: absolute;
+		top: 0;
+		left: 0;
+		border: solid 1px darkblue;
+		background-color:rgb(179, 179, 179);
+	}
+
+	canvas {
+		position:absolute;
+		background-color:white;
+		border: 1px solid black;
 	}
 
 </style>
