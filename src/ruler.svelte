@@ -1,4 +1,5 @@
 <script>
+import { draggable } from 'svelte-drag';
 
 export let disposition = "horizontal"
 
@@ -18,6 +19,7 @@ function shorten_label(label) {
     }
     return label
 }
+
 
 
 function drawInterval_H(ctx,curD,totalLen,thick,tick_delta,label,label_offset,label_v) {
@@ -109,6 +111,9 @@ let ruler_height = 16
 let drag_x = 0
 let drag_y = 0
 
+let drag_direction = ( disposition === "horizontal" ) ? "y" : "x"
+
+
 let calc_ruler_top = 0
 let calc_ruler_left = 0
 
@@ -172,7 +177,7 @@ if ( disposition === "horizontal" ) {
 }
 
 </script>
-<canvas bind:this={the_ruler} width={ruler_width} height={ruler_height} class="ruler" style="left:{calc_ruler_left}px;top:{calc_ruler_top}px;height:{ruler_height}px;width:{ruler_width}px">
+<canvas bind:this={the_ruler} use:draggable={{ axis: drag_direction, bounds: 'parent' }} width={ruler_width} height={ruler_height} class="ruler" style="left:{calc_ruler_left}px;top:{calc_ruler_top}px;height:{ruler_height}px;width:{ruler_width}px" >
 </canvas>
 <style>
 

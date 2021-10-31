@@ -20,6 +20,7 @@
   "dependencies": {
     "sirv-cli": "^1.0.0",
     "svelte-burger-menu": "^1.0.5",
-    "svelte-color-picker": "^1.0.7"
+    "svelte-color-picker": "^1.0.7",
+    "svelte-drag": "^2.0.2"
   }
 }
