@@ -1,6 +1,7 @@
 <script>
 	import BurgerMenu from 'svelte-burger-menu';
 	import {HsvPicker} from 'svelte-color-picker';
+	import Ruler from './ruler.svelte'
 
 	let g_canvas_element
 	let g_canvas_container
@@ -33,6 +34,10 @@
 		{ value : -4, text :"fit to all" },
 	]
 
+	let ruler_magnification = maginification/100
+	let h_zero_tick = 0
+	let v_zero_tick = 0
+
 	setTimeout(set_magnification,100)
 
 	function set_magnification(evt) {
@@ -40,6 +45,7 @@
 			if ( g_canvas_system ) {
 				//
 				calc_maginification = maginification/100;
+				ruler_magnification = calc_maginification
 				g_calc_doc_width = g_doc_width*calc_maginification
 				g_calc_doc_height = g_doc_height*calc_maginification
 				//
@@ -61,6 +67,8 @@
 				setTimeout(() => {
 					g_doc_left = Math.floor(g_calc_container_width/2) - Math.floor(g_calc_doc_width/2)
 					g_doc_top = Math.floor(g_calc_container_height/2) - Math.floor(g_calc_doc_height/2)
+					v_zero_tick = g_doc_top
+					h_zero_tick = g_doc_left
 				},20)
 
 			}
@@ -320,6 +328,19 @@
 		}
 	}
 
+
+	let ruler_left = 0
+	let ruler_top = 0
+
+
+	function scroll_rulers(evt) {
+		let target = evt.target
+		let top_s_y = target.scrollTop
+		let left_s_x = target.scrollLeft
+		//
+		ruler_top = top_s_y
+		ruler_left = left_s_x
+	}
 
 </script>
 
@@ -617,11 +638,13 @@
 	<input class="bottom-input" type=number bind:value={guass_blur_level} min="0" max="100" on:change={blurry_changed}>
 </div>
 
-<div bind:this={g_canvas_system} class="canvas-system" >
+<div bind:this={g_canvas_system} class="canvas-system" on:scroll={scroll_rulers}>
 	<div bind:this={g_canvas_container} class="canvas-panel" style="width:{g_calc_container_width}px;height:{g_calc_container_height}px;" >
-		<canvas bind:this={g_canvas_element} style="width:{g_calc_doc_width}px;height:{g_calc_doc_height}px;left:{g_doc_left}px;top:{g_doc_top}px"  >
+		<canvas class="main-canvas" bind:this={g_canvas_element} style="width:{g_calc_doc_width}px;height:{g_calc_doc_height}px;left:{g_doc_left}px;top:{g_doc_top}px"  >
 	
 		</canvas>
+		<Ruler disposition="horizontal" {ruler_top} {ruler_magnification} zero_tick={h_zero_tick} />
+		<Ruler disposition="vertical" {ruler_left}  {ruler_magnification} zero_tick={v_zero_tick} />
 	</div>	
 </div>
 
@@ -836,9 +859,10 @@
 		left: 0;
 		border: solid 1px darkblue;
 		background-color:rgb(179, 179, 179);
+		overflow: hidden;
 	}
 
-	canvas {
+	.main-canvas {
 		position:absolute;
 		background-color:white;
 		border: 1px solid black;
