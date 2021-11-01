@@ -1,11 +1,48 @@
 <script>
 	import BurgerMenu from 'svelte-burger-menu';
 	import {HsvPicker} from 'svelte-color-picker';
+	import FloatWindow from 'svelte-float-window';
+	import { popup_size } from '../utils/display-utils.js'
+	import { erase_canvas, grid_on_canvas } from '../utils/canvas-utils.js'
 	import Ruler from './ruler.svelte'
+	import Modal from './modal.svelte'
+	import { onMount } from 'svelte';
+
+	import NewProject from './dialogs/project-new.svelte'
+	import OpenProject from './dialogs/project-open.svelte'
+	import SaveProject from './dialogs/project-save.svelte'
+
+	import ImportSVG from './dialogs/svg-import.svelte'
+	import ExportSVG from './dialogs/svg-export.svelte'
+	import SaveSVG from './dialogs/svg-save.svelte'
+	import DocProps from './dialogs/doc-properties.svelte'
+
+	let window_scale = { "w" : 0.4, "h" : 0.6 }
+	const INTERVAL_ruler = 50
+	//
+	window_scale = popup_size()
+	let all_window_scales = []
+	all_window_scales.push(window_scale)
+	all_window_scales.push(window_scale)
+	all_window_scales.push(window_scale)
+	//
+	onMount(() => {
+		window.addEventListener("resize", (e) => {
+			//
+			let scale = popup_size()
+			//
+			window_scale.h = scale.h; 
+			window_scale.w = scale.w;
+			//
+		})
+	})
+
+
 
 	let g_canvas_element
 	let g_canvas_container
 	let g_canvas_system
+	let g_show_grid = false
 
 	let g_doc_width = 640
 	let g_doc_height = 480
@@ -20,9 +57,9 @@
 	let g_calc_doc_height = g_doc_height
 
 
-	let maginification = 100
-	let calc_maginification = maginification/100.0
-	let maginifications = [
+	let magnification = 100
+	let calc_magnification = magnification/100.0
+	let magnifications = [
 		{ value : 400, text :"400%" },
 		{ value : 200, text :"200%" },
 		{ value : 100, text :"100%" },
@@ -34,20 +71,38 @@
 		{ value : -4, text :"fit to all" },
 	]
 
-	let ruler_magnification = maginification/100
+	let ruler_magnification = magnification/100
 	let h_zero_tick = 0
 	let v_zero_tick = 0
 
 	setTimeout(set_magnification,100)
 
+	// ---- ---- ---- ---- ---- ---- ---- ---- ---- ---- ---- ----
+	//
+	function draw_grid_on_canvas(canvas_el,mag) {
+		let ctxt = canvas_el.getContext("2d");
+		let width = canvas_el.width
+		let height = canvas_el.height
+		erase_canvas(ctxt,width,height)
+		grid_on_canvas(ctxt,width,height,mag,INTERVAL_ruler)
+	}
+
+	function clear_grid_from_canvas(canvas_el,mag) {
+		let ctxt = canvas_el.getContext("2d");
+		let width = canvas_el.width
+		let height = canvas_el.height
+		erase_canvas(ctxt,width,height)
+	}
+	// ----
+
 	function set_magnification(evt) {
-		if ( maginification > 0 ) {
+		if ( magnification > 0 ) {
 			if ( g_canvas_system ) {
 				//
-				calc_maginification = maginification/100;
-				ruler_magnification = calc_maginification
-				g_calc_doc_width = g_doc_width*calc_maginification
-				g_calc_doc_height = g_doc_height*calc_maginification
+				calc_magnification = magnification/100;
+				ruler_magnification = calc_magnification
+				g_calc_doc_width = g_doc_width*calc_magnification
+				g_calc_doc_height = g_doc_height*calc_magnification
 				//
 				let system_rect = g_canvas_system.getBoundingClientRect()
 
@@ -69,6 +124,9 @@
 					g_doc_top = Math.floor(g_calc_container_height/2) - Math.floor(g_calc_doc_height/2)
 					v_zero_tick = g_doc_top
 					h_zero_tick = g_doc_left
+					if ( g_show_grid && g_canvas_element ) {
+						draw_grid_on_canvas(g_canvas_element,calc_magnification)
+					}
 				},20)
 
 			}
@@ -342,6 +400,136 @@
 		ruler_left = left_s_x
 	}
 
+	// ---- ---- ---- ---- ---- ---- ---- ----
+	// ---- ---- ---- ---- ---- ---- ---- ----
+
+	let g_visibile_items = {
+		"project_new" : false,
+		"project_open" : false,
+		"project_save" : false,
+		"svg_import" : false,
+		"svg_export" : false,
+		"svg_save" : false,
+		"doc_properties" : false,
+		"editor_prefs" : false,
+	}
+
+	let g_which_open_modal = "none"
+
+
+	function handle_modal_close(evt) {
+		let result = evt.detail.type
+		g_visibile_items[g_which_open_modal] = false
+		g_which_open_modal = "none"
+	}
+
+	function toggle_dialog(dialog_title) {
+
+		let [species,cmd] = dialog_title.split('-')
+
+		switch ( species ) {
+			case "project" : {
+				switch ( cmd ) {
+					case "new" : {
+						g_visibile_items.project_new = true
+						g_which_open_modal = "project_new"
+						break;
+					}
+					case "open" : {
+						g_visibile_items.project_open = true
+						g_which_open_modal = "project_open"
+						break;
+					}
+					case "save" : {
+						g_visibile_items.project_save = true
+						g_which_open_modal = "project_save"
+						break;
+					}
+					default : {
+						break;
+					}
+				}
+				break;
+			}
+			case "svg" : {
+				switch ( cmd ) {
+					case "import" : {
+						g_visibile_items.svg_import = true
+						g_which_open_modal = "svg_import"
+						break;
+					}
+					case "export" : {
+						g_visibile_items.svg_export = true
+						g_which_open_modal = "svg_export"
+						break;
+					}
+					case "save" : {
+						g_visibile_items.svg_save = true
+						g_which_open_modal = "svg_save"
+						break;
+					}
+					default : {
+						break;
+					}
+				}
+				break;
+			}
+			case "doc" : {  // "doc-properties"
+				g_visibile_items.doc_properties = true
+				g_which_open_modal = "doc_properties"
+				break;
+			}
+			case "editor" : { // "editor-prefs"
+				g_visibile_items.editor_prefs = true
+				g_which_open_modal = "editor_prefs"
+				break;
+			}
+			default: {
+				break;
+			}
+		}
+
+	}
+
+	function toggle_float(float_name) {
+
+		switch ( float_name ) {
+			case "library-view" : {
+				start_floating_window(0);
+				break;
+			}
+			case "svg-edit" : {
+				start_floating_window(1);
+				break;
+			}
+			case "layers-manager" : {
+				start_floating_window(2);
+				break;
+			}
+			default: {
+				break;
+			}
+		}
+
+	}
+
+
+	function toggle_grid(evt) {
+		g_show_grid = !g_show_grid
+		if ( g_show_grid && g_canvas_element ) {
+			draw_grid_on_canvas(g_canvas_element,calc_magnification)	
+		} else if ( g_canvas_element ) {
+			clear_grid_from_canvas(g_canvas_element,calc_magnification)	
+		}
+	}
+
+	function toggle_wireframe(evt) {
+		
+	}
+
+
+
+
 </script>
 
 <div class="left-panel" >
@@ -608,8 +796,8 @@
 	<div class="bottom-menu-button" >
 		<img class="bottom-menu-item"  src="./images/zoom.svg" alt="select" title="zoom" />
 	</div>
-	<select bind:value={maginification} style="font-size: 80%;" on:change={set_magnification}>
-		{#each maginifications as mag}
+	<select bind:value={magnification} style="font-size: 80%;" on:change={set_magnification}>
+		{#each magnifications as mag}
 			<option value={mag.value}>
 				{mag.text}
 			</option>
@@ -640,70 +828,71 @@
 
 <div bind:this={g_canvas_system} class="canvas-system" on:scroll={scroll_rulers}>
 	<div bind:this={g_canvas_container} class="canvas-panel" style="width:{g_calc_container_width}px;height:{g_calc_container_height}px;" >
-		<canvas class="main-canvas" bind:this={g_canvas_element} style="width:{g_calc_doc_width}px;height:{g_calc_doc_height}px;left:{g_doc_left}px;top:{g_doc_top}px"  >
+		<canvas class="main-canvas" bind:this={g_canvas_element} width={g_calc_doc_width} height={g_calc_doc_height} style="width:{g_calc_doc_width}px;height:{g_calc_doc_height}px;left:{g_doc_left}px;top:{g_doc_top}px"  >
 	
 		</canvas>
-		<Ruler disposition="horizontal" {ruler_top} {ruler_magnification} zero_tick={h_zero_tick} />
-		<Ruler disposition="vertical" {ruler_left}  {ruler_magnification} zero_tick={v_zero_tick} />
-	</div>	
+		<Ruler disposition="horizontal" {ruler_top} {ruler_magnification} zero_tick={h_zero_tick} ruler_interval={INTERVAL_ruler}/>
+		<Ruler disposition="vertical" {ruler_left}  {ruler_magnification} zero_tick={v_zero_tick} ruler_interval={INTERVAL_ruler}/>
+	</div>
 </div>
 
+
 <BurgerMenu>
-	<div class="b-menu-item" >
+	<div class="b-menu-item" on:click={ () => { toggle_dialog("project-new") } }>
 		<img class="top-menu-item"  src="./images/new.svg" alt="new" title="new" />
 		<div class="b-menu-item-text" >Create New Project</div>
 	</div>
-	<div class="b-menu-item" >
+	<div class="b-menu-item" on:click={ () => { toggle_dialog("project-open") } } >
 		<img class="top-menu-item"  src="./images/open.svg" alt="open" title="open" />
 		<div class="b-menu-item-text" >Open Project</div>
 	</div>
-	<div class="b-menu-item" >
+	<div class="b-menu-item" on:click={ () => { toggle_dialog("project-save") } } >
 		<img class="top-menu-item"  src="./images/save.svg" alt="save" title="save" />
 		<div class="b-menu-item-text" >Save Project</div>
 	</div>
 	<hr>
-	<div class="b-menu-item" >
+	<div class="b-menu-item" on:click={ () => { toggle_dialog("svg-import") } }>
 		<img class="top-menu-item"  src="./images/importImg.svg" alt="import" title="import" />
 		<div class="b-menu-item-text" >Import SVG</div>
 	</div>
-	<div class="b-menu-item" >
+	<div class="b-menu-item" on:click={ () => { toggle_dialog("svg-export") } } >
 		<img class="top-menu-item"  src="./images/export.svg" alt="export" title="export" />
 		<div class="b-menu-item-text" >Export SVG</div>
 	</div>
-	<div class="b-menu-item" >
+	<div class="b-menu-item" on:click={ () => { toggle_dialog("svg-save") } } >
 		<img class="top-menu-item"  src="./images/save.svg" alt="save" title="save" />
 		<div class="b-menu-item-text" >Save SVG</div>
 	</div>
 	<hr>
-	<div class="b-menu-item" >
+	<div class="b-menu-item" on:click={ () => { toggle_float("library-view") } } >
 		<img class="top-menu-item"  src="./images/library.svg" alt="Image Lib" title="Image Library" />
 		<div class="b-menu-item-text" >Image Library</div>
 	</div>
 	<hr>
-	<div class="b-menu-item" >
+	<div class="b-menu-item"  on:click={ () => { toggle_dialog("doc-properties") } } >
 		<img class="top-menu-item"  src="./images/docprop.svg" alt="document properties" title="document properties" />
 		<div class="b-menu-item-text" >Document Properties</div>
 	</div>
-	<div class="b-menu-item" >
+	<div class="b-menu-item"  on:click={ () => { toggle_dialog("editor-prefs") } } >
 		<img class="top-menu-item"  src="./images/editPref.svg" alt="editor preferences" title="editor preferences" />
 		<div class="b-menu-item-text" >Editor Preferences</div>
 	</div>
 	<hr>
-	<div class="b-menu-item" >
-		<img class="top-menu-item"  src="./images/source.svg" alt="view SVG" title="view SVG" />
+	<div class="b-menu-item"  on:click={ () => { toggle_float("svg-edit") } } >
+		<img class="top-menu-item"  src="./images/source.svg" alt="edit SVG" title="edit SVG" />
 		<div class="b-menu-item-text" >Edit SVG</div>
 	</div>
-	<div class="b-menu-item" >
+	<div class="b-menu-item"  on:click={toggle_grid} >
 		<img class="top-menu-item"  src="./images/grid.svg" alt="Editor Grid" title="Editor Grid" />
 		<div class="b-menu-item-text" >{show_hide_grid} Grid</div>
 	</div>
-	<div class="b-menu-item" >
+	<div class="b-menu-item"  on:click={toggle_wireframe} >
 		<img class="top-menu-item"  src="./images/wireframe.svg" alt="Wire Frame" title="Wire Frame" />
 		<div class="b-menu-item-text" >{show_hide_wireframe} Wire Frame</div>
 	</div>
 	<hr>
-	<div class="b-menu-item" >
-		<img class="top-menu-item"  src="./images/wireframe.svg" alt="Wire Frame" title="Wire Frame" />
+	<div class="b-menu-item"  on:click={ () => { toggle_float("layers-manager") } }  >
+		<img class="top-menu-item"  src="./images/wireframe.svg" alt="Layers" title="Layers" />
 		<div class="b-menu-item-text" >Manage Layers</div>
 	</div>
 	
@@ -712,6 +901,59 @@
 <div class="color-box" style="visibility:{is_viz};top:{colorizer_top};left:{colorizer_left}" >
 	<HsvPicker on:colorChange={colorCallback} startColor={"#FBFBFB"}/>
 </div>
+
+
+<Modal visible={g_visibile_items.project_new} on:message={handle_modal_close} >
+	<NewProject/>
+</Modal>
+
+<Modal visible={g_visibile_items.project_open} on:message={handle_modal_close} >
+	<OpenProject />
+</Modal>
+
+<Modal visible={g_visibile_items.project_save} on:message={handle_modal_close} >
+	<SaveProject />
+</Modal>
+
+
+<Modal visible={g_visibile_items.svg_import} on:message={handle_modal_close} >
+	<ImportSVG />
+</Modal>
+
+<Modal visible={g_visibile_items.svg_export} on:message={handle_modal_close} >
+	<ExportSVG />
+</Modal>
+
+<Modal visible={g_visibile_items.svg_save} on:message={handle_modal_close} >
+	<SaveSVG />
+</Modal>
+
+<Modal visible={g_visibile_items.doc_properties} on:message={handle_modal_close} >
+	<DocProps />
+</Modal>
+
+<Modal visible={g_visibile_items.editor_prefs} on:message={handle_modal_close} >
+	editor prefs
+</Modal>
+
+
+
+<FloatWindow title="Image Library"  index={0} scale_size_array={all_window_scales[0]} >
+	Image Library
+</FloatWindow>
+
+
+<FloatWindow title="SVG Editor"  index={1} scale_size_array={all_window_scales[1]} >
+	SVG Editor
+</FloatWindow>
+
+
+<FloatWindow title="Manage Layers"  index={2} scale_size_array={all_window_scales[2]} >
+	Manage Layers
+</FloatWindow>
+
+
+
 
 <style>
 

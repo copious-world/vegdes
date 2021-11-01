@@ -9,7 +9,7 @@ export let ruler_top = 0
 export let ruler_left = 0
 export let ruler_magnification = 1.0
 export let zero_tick = 0
-
+export let ruler_interval = 50
 
 function shorten_label(label) {
     if ( label > 1000 ) {
@@ -159,7 +159,7 @@ $: if ( the_ruler && (zero_tick > 0) ) {
 
     let totalLen = Math.max(ruler_width,ruler_height)
     let thick = Math.min(ruler_width,ruler_height)
-    let interval = 50
+    let interval = ruler_interval
     if ( ruler_magnification < 1 ) {
         interval = Math.floor(100*(1/ruler_magnification))
     }
