@@ -3,8 +3,8 @@ import { writable } from 'svelte/store';
 
 export const file_store = writable({
     "file_name" : "",
-    "file_ready" : false,
-    "file_action" : (link) => {}
+    "ready" : false,
+    "action" : (link) => {}
 });
 
 

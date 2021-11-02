@@ -16,6 +16,7 @@
 	import ExportSVG from './dialogs/svg-export.svelte'
 	import SaveSVG from './dialogs/svg-save.svelte'
 	import DocProps from './dialogs/doc-properties.svelte'
+	import EditPrefs from './dialogs/editor-preferences.svelte'
 
 	let window_scale = { "w" : 0.4, "h" : 0.6 }
 	const INTERVAL_ruler = 50
@@ -933,7 +934,7 @@
 </Modal>
 
 <Modal visible={g_visibile_items.editor_prefs} on:message={handle_modal_close} >
-	editor prefs
+	<EditPrefs />
 </Modal>
 
 

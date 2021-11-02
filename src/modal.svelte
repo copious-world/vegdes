@@ -1,6 +1,7 @@
 <script>
 
     import { file_store } from "../utils/file-utils"
+    import { db_store } from "../utils/db-utils"
     import {createEventDispatcher} from 'svelte';
     
     const dispatch = createEventDispatcher();
@@ -21,11 +22,22 @@
 		file_state = value;
 	});
 
+    let db_state
+    db_store.subscribe(value => {
+		db_state = value;
+	});
+
+
     function handle_Cancel(evt) {
 
-        if ( file_state && file_state.file_ready ) {
-            let file_action = file_state.file_action
+        if ( file_state && file_state.ready ) {
+            let file_action = file_state.action
             file_action(false)
+        }
+
+        if  ( db_state && db_state.ready ) {
+            let db_action = db_state.action
+            db_action(false)
         }
 
         dispatch('message', {
@@ -35,9 +47,14 @@
 
     function handle_OK(evt) {
 
-        if ( file_state && file_state.file_ready ) {
-            let file_action = file_state.file_action
+        if ( file_state && file_state.ready ) {
+            let file_action = file_state.action
             file_action(href_link)
+        }
+
+        if  ( db_state && db_state.ready ) {
+            let db_action = db_state.action
+            db_action(true)
         }
 
         dispatch('message', {

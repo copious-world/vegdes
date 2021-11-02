@@ -1,9 +1,10 @@
 <script>
-    import { file_store } from "../utils/file-utils"
-    import { db_store } from "../utils/db-utils"
-    import {download_session_record} from '../../utils/file-utils'
-   
 
+    import { file_store } from "../../utils/file-utils"
+    import { db_store } from "../../utils/db-utils"
+    import {download_session_record} from '../../utils/file-utils'
+    // ---- ---- ---- ---- ---- ---- ---- ---- ---- ---- ---- ---- ----
+    //
     let g_save_to_disk = false
     let file_name = ""
     let complete = false
@@ -18,27 +19,42 @@
     $: author = sel_project.author
     $: description = sel_project.description
 
+    function clear_form() {
+        g_save_to_disk = false
+        file_name = ""
+        project_name = ""
+        author = ""
+        description = ""
+    }
+
 	function data_ready() {
-        file_store.update(file_state => {
-            //
-            if ( g_save_to_disk ) {
+        if ( g_save_to_disk ) {
+            file_store.update(file_state => {
                 file_state.file_name = file_name
-                file_state.file_action = (href_link) => {
+                file_state.ready = true
+                file_state.action = (href_link) => {
                     if ( href_link ) {
                         download_session_record(JSON.stringify(sel_project.data),'application/json',file_name,href_link)
                     } else {
-                        g_save_to_disk = false
-                        file_name = ""
-                        project_name = ""
-                        author = ""
-                        description = ""
+                        clear_form()
                     }
+                    file_store.update(file_state => { file_state.ready = false })
                 }
-            } else {
-
-            }
-            //
-        })
+            })
+        } else {
+            db_store.update(db_state => {
+                db_state.name = project_name
+                db_state.ready = true
+                db_state.action = (do_save) => {
+                        if ( do_save ) {
+                            // store to indexed db
+                        } else {
+                            clear_form()
+                        }
+                        file_store.update(db_state => { db_state.ready = false })
+                    }
+            })
+        }
 	}
 
     $: if ( complete ) {
