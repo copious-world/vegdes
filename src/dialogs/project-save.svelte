@@ -1,17 +1,54 @@
 <script>
+    import { file_store } from "../utils/file-utils"
+    import { db_store } from "../utils/db-utils"
+    import {download_session_record} from '../../utils/file-utils'
+   
 
     let g_save_to_disk = false
     let file_name = ""
+    let complete = false
+
+    let project_name = ""  // get it from the shared store -- editor state store
+    let author = ""
+    let description = ""
 
     // from the selection store
     let sel_project = { "name" : "test 1", "description" : "this is a test", "author" : "Samual Johnson" }
-    let project_name = sel_project.name  // get it from the shared store -- editor state store
-    let author = sel_project.author
-    let description = sel_project.description
+    $: project_name = sel_project.name  // get it from the shared store -- editor state store
+    $: author = sel_project.author
+    $: description = sel_project.description
+
+	function data_ready() {
+        file_store.update(file_state => {
+            //
+            if ( g_save_to_disk ) {
+                file_state.file_name = file_name
+                file_state.file_action = (href_link) => {
+                    if ( href_link ) {
+                        download_session_record(JSON.stringify(sel_project.data),'application/json',file_name,href_link)
+                    } else {
+                        g_save_to_disk = false
+                        file_name = ""
+                        project_name = ""
+                        author = ""
+                        description = ""
+                    }
+                }
+            } else {
+
+            }
+            //
+        })
+	}
+
+    $: if ( complete ) {
+        data_ready()
+    }
 
 </script>
 <div class="project-creation">
     <div class="labelish">Save a project record in the browser's IndexedDB or to a File on a local disk</div>
+    <input type="checkbox" bind:value={complete} >
     <label>
         <input type=radio bind:group={g_save_to_disk} value={false}>
         Save to DB
@@ -30,9 +67,9 @@
             <blockquote>{description}</blockquote>
         </div>
         {#if g_save_to_disk}
-        <span class="labelish" >Enter file name: </span> <input type="text" bind:value={file_name} />
+            <span class="labelish" >Enter file name: </span> <input type="text" bind:value={file_name} />
         {:else}
-        <br><br>
+            <br><br>
         {/if}
     </div>
 </div>

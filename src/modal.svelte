@@ -1,10 +1,13 @@
 <script>
 
+    import { file_store } from "../utils/file-utils"
     import {createEventDispatcher} from 'svelte';
+    
     const dispatch = createEventDispatcher();
 
     export let visible = false
 
+    let href_link
     let display_type = "none"
     $: display_type = visible ? "block" : "none"
 
@@ -12,13 +15,31 @@
         evt.preventDefault = true
     }
 
+	let file_state;
+
+	file_store.subscribe(value => {
+		file_state = value;
+	});
+
     function handle_Cancel(evt) {
+
+        if ( file_state && file_state.file_ready ) {
+            let file_action = file_state.file_action
+            file_action(false)
+        }
+
         dispatch('message', {
 			type: 'cancel'
 		});
     }
 
     function handle_OK(evt) {
+
+        if ( file_state && file_state.file_ready ) {
+            let file_action = file_state.file_action
+            file_action(href_link)
+        }
+
         dispatch('message', {
 			type: 'OK'
 		});
@@ -36,6 +57,7 @@
             <slot></slot>
         </div>
     </div>
+    <a bind:this={href_link} href="blob" class="hidden-link" >nothing</a>
 </div>
 
 <style>
@@ -90,5 +112,8 @@
         cursor: pointer;
     }
 
+    .hidden-link {
+        visibility: hidden;
+    }
 
 </style>
