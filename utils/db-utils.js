@@ -78,12 +78,14 @@ class SVGEditDB extends AppDBWrapper {
     }
 
     //
-    async add_file(file_name,description) {
+    async add_file(file_name,description,svg,to_layer) {
+        if ( svg === undefined ) svg = ""
+        if ( to_layer == undefined ) to_layer = 0
         let file_record = {
             "name" : file_name, 
             "description" : description, 
             "author" : this.current_author, 
-            "data" : "", "ouput" : "", "svg" : "" }
+            "data" : "", "ouput" : "", "svg" : svg, "layer" : to_layer }
         //
         let data = JSON.stringify(file_record)
         await this.add_data(data,file_name)

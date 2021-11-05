@@ -13,7 +13,6 @@
     let project_db = false
     let first_file = ""
 
-
     function clear_form() {
         fld_project_name = ""
         author = ""

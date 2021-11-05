@@ -536,9 +536,18 @@
 
 	let project_selected = false
 	let g_db_store = null
+	let g_exportable = false
 	db_store.subscribe((db_obj) => {
-		g_db_store = db_obj
-		project_selected = db_obj.ready
+		if ( !db_obj ) {
+			project_selected = false
+			g_db_store = null
+			g_exportable = false
+		} else {
+			g_db_store = db_obj
+			project_selected = db_obj.ready
+			g_exportable = db_obj.current_file_entry ? db_obj.current_file_entry.name : false
+			if ( g_exportable === undefined || g_exportable === null ) g_exportable = false
+		}
 	})
 
 </script>
@@ -942,11 +951,11 @@
 </Modal>
 
 <Modal visible={g_visibile_items.svg_export} on:message={handle_modal_close} >
-	<ExportSVG ui_target={g_visibile_items.svg_export} />
+	<ExportSVG ui_target={g_visibile_items.svg_export} export_file={g_exportable}/>
 </Modal>
 
 <Modal visible={g_visibile_items.svg_save} on:message={handle_modal_close} >
-	<SaveSVG ui_target={g_visibile_items.svg_save} />
+	<SaveSVG ui_target={g_visibile_items.svg_save} save_file={g_exportable} />
 </Modal>
 
 <Modal visible={g_visibile_items.doc_properties} on:message={handle_modal_close} >

@@ -1,18 +1,42 @@
 <script>
-    import { get } from "svelte/store";
     import { get_file }  from "../../utils/file-utils"
     import { db_store, dialog_control } from "../../utils/db-utils"
     // ---- ---- ---- ---- ---- ---- ---- ---- ---- ---- ---- ---- ----
     export let ui_target= false
     // ---- ---- ---- ---- ---- ---- ---- ---- ---- ---- ---- ---- ----
 
-    let storage_top = get(db_store)
-    $: project_db = storage_top.db_storage_ref[0]
+    let project_db = false
+    //
+    let storage_top = false
+    let project_selected = false
 
-    
-    let sel_project = { "name" : "test 1", "description" : "this is a test", "author" : "Samual Johnson", "data" : "", "ouput" : "", "svg" : "" }
-    let project_name = sel_project.name  // get it from the shared store -- editor state store
+    let project_name = ""
+    let project_description = ""
+    let author = ""
 
+	db_store.subscribe((db_obj) => {
+		storage_top = db_obj
+		project_selected = db_obj.ready
+	})
+
+    $: if ( storage_top ) {
+        project_selected = storage_top.ready
+        project_db = storage_top.db_storage_ref[0]
+    }
+
+        // from the selection store
+    let sel_project = false//storage_top
+    $: if ( project_db ) {
+        project_name = storage_top ? storage_top.project_name  : "" // get it from the shared store -- editor state store
+        setTimeout(async () => {
+            sel_project = await project_db.get_project(project_name)
+        },10)
+    }
+    $: author = storage_top ? storage_top.author : ""
+    $: project_description = storage_top ? storage_top.description : ""
+
+
+    // ---- ----
     let to_layer = 1;
     let file_name = ""
     let description = ""
@@ -34,16 +58,19 @@
         }
     }
 
-    function data_ready() {
-        project_db.add_file(file_name,description,file_svg)
+    // // ----/ ----/ ----/ ----/ ----
+    async function data_ready() {
+        if ( project_db ) {
+            await project_db.add_file(file_name,description,file_svg,to_layer)
+        }
     }
 
     let dialog_control_unsub = false
     // ----/ ----/ ----/ ----/ ----
     $: if ( ui_target ) {
-        dialog_control_unsub = dialog_control.subscribe(value => {
+        dialog_control_unsub = dialog_control.subscribe(async value => {
             if ( value ) {
-                data_ready()
+                await data_ready()
                 dialog_control.update(d_val => { return null })
             }
         });
@@ -51,31 +78,51 @@
         if ( dialog_control_unsub ) dialog_control_unsub()
     }
 
-
     // ---- ---- ---- ---- ---- ---- ---- ---- ---- ---- ---- ---- ---- ---- ---- ---- ----
     //
 </script>
 <div class="project-creation">
     <div class="labelish">Add SVG to the current project</div> 
-    <div>
-        <span class="labelish" >Project name: </span> {project_name}
-    </div>
-    <div>
-        <span class="labelish" >Layer: </span> <input type=number bind:value={to_layer} min="1" max="10" on:change={to_layer_changed} />
-    </div>
-    <div class="labelish">Load a svg file from disk:</div> 
-    <button class="uploader-button" on:click={load_svg} >▲ project</button>&nbsp;&nbsp;<span>{file_name}</span>
+    {#if project_selected }
+        <div lass="field-wrappers" >
+            <div class="field-wrappers" >
+                <div><span class="labelish" >Project name: </span> {project_name}</div>
+                <div>
+                    <span class="labelish" >Layer: </span> <input type=number bind:value={to_layer} min="1" max="10" on:change={to_layer_changed} />
+                </div>        
+                <div>
+                    <div><span class="labelish" >Author Name: </span> {author} </div>
+                </div>    
+                <div>
+                    <div class="labelish" >Description: </div> 
+                    <blockquote>{project_description}</blockquote>
+                </div>
+            </div>
+            <div class="field-wrappers" >
+                <div class="labelish">Load an SVG file from disk:</div> 
+                <div>
+                    <span class="labelish" >To DB File: </span><input type=text bind:value={file_name} />
+                </div>
+            </div>
+            <button class="uploader-button" on:click={load_svg} >▲ import</button>&nbsp;&nbsp;<span>{file_name}</span>
+            {#if file_name.length }
+                <div class="field-wrappers">
+                    <div>
+                        <div class="labelish" style="margin-bottom:3px" >Description: </div> 
+                        <textarea bind:value={description} style="width:95%;margin-left:3%" />    
+                    </div>    
+                </div>
+            {/if}
+        </div>
+    {:else}
+        <div lass="field-wrappers" >
+            Select a project for editing. Use <b>Manage Projects</b>
+        </div>
+    {/if}
+
     <div style="visibility: hidden;" >
         <input bind:this={file_clicker} type=file bind:value={file_name} />
 	</div>
-    {#if file_name.length }
-    <div class="field-wrappers">
-        <div>
-            <div class="labelish" style="margin-bottom:3px" >Description: </div> 
-            <textarea bind:value={description} style="width:95%;margin-left:3%" />    
-        </div>    
-    </div>
-    {/if}
 </div>
 <style>
 
