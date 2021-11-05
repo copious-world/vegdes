@@ -1,27 +1,46 @@
 <script>
+    import { get } from "svelte/store";
+    import { file_store, download_session_record } from "../../utils/file-utils"
+    import { db_store, dialog_control } from "../../utils/db-utils"
+    // ---- ---- ---- ---- ---- ---- ---- ---- ---- ---- ---- ---- ----
+    export let ui_target= false
+    // ---- ---- ---- ---- ---- ---- ---- ---- ---- ---- ---- ---- ----
+        
+    let snapping = false
+    let snapping_step = 10
 
-let snapping = false
-let snapping_step = 10
+    let languages = [
+        "English",
+        "Francais"
+    ]
 
-let languages = [
-    "English",
-    "Francais"
-]
-
-let language = languages[0]
+    let language = languages[0]
 
 
-let units = [
-    "Pixels",
-    "Centimeters",
-    "Milimeters",
-    "Inches",
-    "Points",
-    "Picas",
-    "Ems"
-]
+    let units = [
+        "Pixels",
+        "Centimeters",
+        "Milimeters",
+        "Inches",
+        "Points",
+        "Picas",
+        "Ems"
+    ]
 
-let unit = units[0]
+    let unit = units[0]
+
+    let dialog_control_unsub = false
+    // ----/ ----/ ----/ ----/ ----
+    $: if ( ui_target ) {
+        dialog_control_unsub = dialog_control.subscribe(value => {
+            if ( value ) {
+                // data_ready()
+                dialog_control.update(d_val => { return null })
+            }
+        });
+    } else {
+        if ( dialog_control_unsub ) dialog_control_unsub()
+    }
 
 </script>
 <div class="project-creation">

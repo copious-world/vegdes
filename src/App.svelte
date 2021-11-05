@@ -8,7 +8,7 @@
 	import Modal from './modal.svelte'
 	import { onMount } from 'svelte';
 
-	import NewProject from './dialogs/project-new.svelte'
+	import ManageProject from './dialogs/project-manage.svelte'
 	import OpenProject from './dialogs/project-open.svelte'
 	import SaveProject from './dialogs/project-save.svelte'
 
@@ -17,6 +17,8 @@
 	import SaveSVG from './dialogs/svg-save.svelte'
 	import DocProps from './dialogs/doc-properties.svelte'
 	import EditPrefs from './dialogs/editor-preferences.svelte'
+
+	import {db_startup, db_store} from '../utils/db-utils'
 
 	let window_scale = { "w" : 0.4, "h" : 0.6 }
 	const INTERVAL_ruler = 50
@@ -27,7 +29,10 @@
 	all_window_scales.push(window_scale)
 	all_window_scales.push(window_scale)
 	//
-	onMount(() => {
+	onMount(async () => {
+		//
+		await db_startup()  // return value ??
+		//
 		window.addEventListener("resize", (e) => {
 			//
 			let scale = popup_size()
@@ -405,7 +410,7 @@
 	// ---- ---- ---- ---- ---- ---- ---- ----
 
 	let g_visibile_items = {
-		"project_new" : false,
+		"project_manage" : false,
 		"project_open" : false,
 		"project_save" : false,
 		"svg_import" : false,
@@ -432,8 +437,8 @@
 			case "project" : {
 				switch ( cmd ) {
 					case "new" : {
-						g_visibile_items.project_new = true
-						g_which_open_modal = "project_new"
+						g_visibile_items.project_manage = true
+						g_which_open_modal = "project_manage"
 						break;
 					}
 					case "open" : {
@@ -529,7 +534,12 @@
 	}
 
 
-
+	let project_selected = false
+	let g_db_store = null
+	db_store.subscribe((db_obj) => {
+		g_db_store = db_obj
+		project_selected = db_obj.ready
+	})
 
 </script>
 
@@ -841,15 +851,15 @@
 <BurgerMenu>
 	<div class="b-menu-item" on:click={ () => { toggle_dialog("project-new") } }>
 		<img class="top-menu-item"  src="./images/new.svg" alt="new" title="new" />
-		<div class="b-menu-item-text" >Create New Project</div>
-	</div>
-	<div class="b-menu-item" on:click={ () => { toggle_dialog("project-open") } } >
-		<img class="top-menu-item"  src="./images/open.svg" alt="open" title="open" />
-		<div class="b-menu-item-text" >Open Project</div>
+		<div class="b-menu-item-text" >Manage Projects</div>
 	</div>
 	<div class="b-menu-item" on:click={ () => { toggle_dialog("project-save") } } >
 		<img class="top-menu-item"  src="./images/save.svg" alt="save" title="save" />
 		<div class="b-menu-item-text" >Save Project</div>
+	</div>
+	<div class="b-menu-item" on:click={ () => { toggle_dialog("project-open") } } >
+		<img class="top-menu-item"  src="./images/open.svg" alt="open" title="open" />
+		<div class="b-menu-item-text" >Load Project</div>
 	</div>
 	<hr>
 	<div class="b-menu-item" on:click={ () => { toggle_dialog("svg-import") } }>
@@ -896,7 +906,17 @@
 		<img class="top-menu-item"  src="./images/wireframe.svg" alt="Layers" title="Layers" />
 		<div class="b-menu-item-text" >Manage Layers</div>
 	</div>
-	
+	<hr>
+	{#if project_selected }
+		<div class="b-menu-item-text" >
+			Editing project: {g_db_store.project_name}
+		</div>
+		{#if g_db_store.current_file_entry && g_db_store.current_file_entry.name }
+			<div class="b-menu-item-text" >
+				Editing file: {g_db_store.current_file_entry.name}
+			</div>
+		{/if}
+	{/if}
 </BurgerMenu>
 
 <div class="color-box" style="visibility:{is_viz};top:{colorizer_top};left:{colorizer_left}" >
@@ -904,37 +924,37 @@
 </div>
 
 
-<Modal visible={g_visibile_items.project_new} on:message={handle_modal_close} >
-	<NewProject/>
+<Modal visible={g_visibile_items.project_manage} on:message={handle_modal_close} positive_prompt={"Select"} >
+	<ManageProject ui_target={g_visibile_items.project_manage}  />
 </Modal>
 
-<Modal visible={g_visibile_items.project_open} on:message={handle_modal_close} >
-	<OpenProject />
+<Modal visible={g_visibile_items.project_open} on:message={handle_modal_close}  positive_prompt={"Store"} >
+	<OpenProject ui_target={g_visibile_items.project_open} />
 </Modal>
 
-<Modal visible={g_visibile_items.project_save} on:message={handle_modal_close} >
-	<SaveProject />
+<Modal visible={g_visibile_items.project_save} on:message={handle_modal_close}  positive_prompt={"Save"} >
+	<SaveProject ui_target={g_visibile_items.project_save} />
 </Modal>
 
 
 <Modal visible={g_visibile_items.svg_import} on:message={handle_modal_close} >
-	<ImportSVG />
+	<ImportSVG ui_target={g_visibile_items.svg_import} />
 </Modal>
 
 <Modal visible={g_visibile_items.svg_export} on:message={handle_modal_close} >
-	<ExportSVG />
+	<ExportSVG ui_target={g_visibile_items.svg_export} />
 </Modal>
 
 <Modal visible={g_visibile_items.svg_save} on:message={handle_modal_close} >
-	<SaveSVG />
+	<SaveSVG ui_target={g_visibile_items.svg_save} />
 </Modal>
 
 <Modal visible={g_visibile_items.doc_properties} on:message={handle_modal_close} >
-	<DocProps />
+	<DocProps ui_target={g_visibile_items.doc_properties} />
 </Modal>
 
 <Modal visible={g_visibile_items.editor_prefs} on:message={handle_modal_close} >
-	<EditPrefs />
+	<EditPrefs ui_target={g_visibile_items.editor_prefs}  />
 </Modal>
 
 

@@ -1,62 +1,38 @@
 <script>
-
-    import { file_store } from "../utils/file-utils"
-    import { db_store } from "../utils/db-utils"
+    //
+    import {dialog_control} from '../utils/db-utils'
     import {createEventDispatcher} from 'svelte';
     
     const dispatch = createEventDispatcher();
 
     export let visible = false
+    export let positive_prompt = "OK"
 
-    let href_link
     let display_type = "none"
-    $: display_type = visible ? "block" : "none"
+    $: {
+        display_type = visible ? "block" : "none"
+        dialog_control.update((val) => {
+            return null
+        })
+    }
 
     function block_click(evt) {
         evt.preventDefault = true
     }
 
-	let file_state;
-
-	file_store.subscribe(value => {
-		file_state = value;
-	});
-
-    let db_state
-    db_store.subscribe(value => {
-		db_state = value;
-	});
-
-
     function handle_Cancel(evt) {
-
-        if ( file_state && file_state.ready ) {
-            let file_action = file_state.action
-            file_action(false)
-        }
-
-        if  ( db_state && db_state.ready ) {
-            let db_action = db_state.action
-            db_action(false)
-        }
-
+        dialog_control.update((val) => {
+            return null
+        })
         dispatch('message', {
 			type: 'cancel'
 		});
     }
 
     function handle_OK(evt) {
-
-        if ( file_state && file_state.ready ) {
-            let file_action = file_state.action
-            file_action(href_link)
-        }
-
-        if  ( db_state && db_state.ready ) {
-            let db_action = db_state.action
-            db_action(true)
-        }
-
+        dialog_control.update((val) => {
+            return true
+        })
         dispatch('message', {
 			type: 'OK'
 		});
@@ -69,12 +45,11 @@
     <div class="matt" >
         <div class="modal">
             <div class="header-box">
-                <button class="ok-button" on:click={handle_OK} >OK</button> <button class="cancel-button" on:click={handle_Cancel}  >Cancel</button>
+                <button class="ok-button" on:click={handle_OK} >{positive_prompt}</button> <button class="cancel-button" on:click={handle_Cancel}  >Cancel</button>
             </div>
             <slot></slot>
         </div>
     </div>
-    <a bind:this={href_link} href="blob" class="hidden-link" >nothing</a>
 </div>
 
 <style>
@@ -129,8 +104,6 @@
         cursor: pointer;
     }
 
-    .hidden-link {
-        visibility: hidden;
-    }
+
 
 </style>
