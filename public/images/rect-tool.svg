@@ -1,0 +1,83 @@
+<?xml version="1.0" encoding="UTF-8" standalone="no"?>
+<svg
+   xmlns:dc="http://purl.org/dc/elements/1.1/"
+   xmlns:cc="http://creativecommons.org/ns#"
+   xmlns:rdf="http://www.w3.org/1999/02/22-rdf-syntax-ns#"
+   xmlns:svg="http://www.w3.org/2000/svg"
+   xmlns="http://www.w3.org/2000/svg"
+   xmlns:sodipodi="http://sodipodi.sourceforge.net/DTD/sodipodi-0.dtd"
+   xmlns:inkscape="http://www.inkscape.org/namespaces/inkscape"
+   viewBox="0 0 51.04 49.47"
+   width="12"
+   height="30"
+   version="1.1"
+   id="svg12"
+   sodipodi:docname="rect-tool.svg"
+   inkscape:version="0.92.2 5c3e80d, 2017-08-06">
+  <metadata
+     id="metadata16">
+    <rdf:RDF>
+      <cc:Work
+         rdf:about="">
+        <dc:format>image/svg+xml</dc:format>
+        <dc:type
+           rdf:resource="http://purl.org/dc/dcmitype/StillImage" />
+      </cc:Work>
+    </rdf:RDF>
+  </metadata>
+  <sodipodi:namedview
+     pagecolor="#ffffff"
+     bordercolor="#666666"
+     borderopacity="1"
+     objecttolerance="10"
+     gridtolerance="10"
+     guidetolerance="10"
+     inkscape:pageopacity="0"
+     inkscape:pageshadow="2"
+     inkscape:window-width="918"
+     inkscape:window-height="747"
+     id="namedview14"
+     showgrid="false"
+     inkscape:zoom="7.8666667"
+     inkscape:cx="-7.3474576"
+     inkscape:cy="15"
+     inkscape:window-x="0"
+     inkscape:window-y="0"
+     inkscape:window-maximized="0"
+     inkscape:current-layer="Calque_1-2" />
+  <defs
+     id="defs4">
+    <style
+       id="style2">.cls-1,.cls-2{fill:none;}.cls-1{stroke:#f9ba00;stroke-linecap:round;stroke-linejoin:round;stroke-width:2px;}</style>
+  </defs>
+  <g
+     id="Calque_2"
+     data-name="Calque 2">
+    <g
+       id="Calque_1-2"
+       data-name="Calque 1">
+      <rect
+         class="cls-1"
+         x="1.3322492"
+         y="40.970215"
+         width="48.820415"
+         height="27.755669"
+         id="rect6"
+         style="fill:none;stroke:#1d110d;stroke-width:3.93858671;stroke-linecap:round;stroke-linejoin:round;stroke-miterlimit:4;stroke-dasharray:none;stroke-opacity:1" />
+      <polyline
+         class="cls-2"
+         points="6.8 0 51.04 0 51.04 49.47 0 49.47 0 0 6.8 0"
+         id="polyline8" />
+      <path
+         style="fill:none;fill-rule:evenodd;stroke:#000000;stroke-width:5.81115913px;stroke-linecap:butt;stroke-linejoin:miter;stroke-opacity:1"
+         d="M 2.5519999,73.396014 V 88.534999"
+         id="path823"
+         inkscape:connector-curvature="0" />
+      <path
+         style="fill:none;fill-rule:evenodd;stroke:#000000;stroke-width:4.25333309px;stroke-linecap:butt;stroke-linejoin:miter;stroke-opacity:1"
+         d="M 1.6220339,87.453644 H 27.033898"
+         id="path835"
+         inkscape:connector-curvature="0" />
+    </g>
+  </g>
+</svg>

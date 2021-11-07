@@ -20,6 +20,21 @@
 
 	import {db_startup, db_store} from '../utils/db-utils'
 
+	// https://github.com/agrinko/js-undo-manager
+	// https://github.com/dnass/svelte-canvas
+
+// https://github.com/kaisermann/svelte-loadable
+// https://javascript.info/modules-dynamic-imports
+// https://stackoverflow.com/questions/56431848/dynamically-loading-component-using-import-or-fetch
+// https://dev.to/chrsjxn/building-a-blog-with-svelte-dynamic-imports-for-svelte-components-5hlp
+
+// https://dev.opera.com/articles/html5-canvas-painting/
+// https://jsfiddle.net/richardcwc/cvem3wuv/
+// https://www.tutorialrepublic.com/html-tutorial/html5-canvas.php
+// https://github.com/ericdrowell/concrete
+//
+
+
 	let window_scale = { "w" : 0.4, "h" : 0.6 }
 	const INTERVAL_ruler = 50
 	//
@@ -144,6 +159,17 @@
 
 	let selection_mode = true
 
+	let tool_cursor = "default"
+	/*
+body {
+ cursor: url('some-cursor.ico'), default;
+}
+
+cursor: url('data:image/svg+xml;utf8,<svg xmlns="http://www.w3.org/2000/svg" width="12" height="30" style="font-size: 20px;"><text y="15">¶</text></svg>'), auto;
+      
+// edit-pencil.svg
+*/
+
 	let rect_selected = true
 	let text_selected = false
 	let path_selected = false
@@ -190,61 +216,75 @@
 		switch ( mode_name ) {
 			case 'select': {
 				selection_mode = false
+				tool_cursor = "default"
 				break
 			}
 			case 'zoom': {
 				selection_mode = false
+				tool_cursor = "zoom-in"
 				break
 			}
 			case 'pencil': {
 				selection_mode = true
 				line_selected = true
+				tool_cursor = `url(./zondicons/edit-pencil.svg), auto`
 				break
 			}
 			case 'pen':
 			case 'path': {
 				selection_mode = true
 				path_selected = true
+				tool_cursor = `url(./zondicons/pen-tool.svg), auto`
 				break
 			}
 			case 'rect': {
 				selection_mode = true
 				rect_selected = true
+				tool_cursor = "default"
+				tool_cursor = `url(./images/rect-tool.svg), auto`
 				break
 			}
 			case 'ellipse': {
 				selection_mode = true
 				circle_selected = true
+				tool_cursor = `url(./images/ellipse-tool.svg), auto`
 				break
 			}
 			case 'polygon': {
 				selection_mode = true
 				polygon_selected = true
+				tool_cursor = `url(./images/polygon-tool.svg), auto`
 				break
 			}
 			case 'star': {
 				selection_mode = true
 				star_selected = true
+				tool_cursor = "default"
+				tool_cursor = `url(./images/star-tool.svg), auto`
 				break
 			}
 			case 'text': {
 				selection_mode = true
 				text_selected = true
+				tool_cursor = "text"
 				break
 			}
 			case 'load': {
 				selection_mode = true
 				picture_selected = true
+				tool_cursor = "default"
 				break
 			}
 			case 'eye_dropper': {
 				selection_mode = false
 				eye_dropper_selected = true
+				tool_cursor = `url(./images/eye_dropper-cursor.svg), auto`
 				break
 			}
 			case 'connector': {
 				selection_mode = true
 				connector_selected = true
+				tool_cursor = `url(./zondicons/share.svg), auto`
 				break
 			}
 			default: {
@@ -558,9 +598,6 @@
 	<div class="v-left-menu-button" on:click={ (evt) => { g_selector = (mode_toggle === 'select'); set_selection_mode('select') } } >
 		<img class="v-left-menu-item"  src="./images/select.svg" alt="select" title="select" />
 	</div>
-	<div class="v-left-menu-button" on:click={ (evt) => { g_selector = (mode_toggle === 'zoom'); set_selection_mode('zoom') } } >
-		<img class="v-left-menu-item"  src="./images/zoom.svg" alt="zoom" title="zoom" />
-	</div>
 	<div class="v-left-menu-button" on:click={ (evt) => { g_selector = (mode_toggle === 'pencil'); set_selection_mode('pencil') } } >
 		<img class="v-left-menu-item"  src="./images/pencil.svg" alt="pencil" title="pencil" />
 	</div>
@@ -813,7 +850,7 @@
 
 
 <div class="bottom-panel">
-	<div class="bottom-menu-button" >
+	<div class="bottom-menu-button" on:click={ (evt) => { g_selector = (mode_toggle === 'zoom'); set_selection_mode('zoom') } }>
 		<img class="bottom-menu-item"  src="./images/zoom.svg" alt="select" title="zoom" />
 	</div>
 	<select bind:value={magnification} style="font-size: 80%;" on:change={set_magnification}>
@@ -847,7 +884,7 @@
 </div>
 
 <div bind:this={g_canvas_system} class="canvas-system" on:scroll={scroll_rulers}>
-	<div bind:this={g_canvas_container} class="canvas-panel" style="width:{g_calc_container_width}px;height:{g_calc_container_height}px;" >
+	<div bind:this={g_canvas_container} class="canvas-panel" style="width:{g_calc_container_width}px;height:{g_calc_container_height}px;cursor:{tool_cursor}" >
 		<canvas class="main-canvas" bind:this={g_canvas_element} width={g_calc_doc_width} height={g_calc_doc_height} style="width:{g_calc_doc_width}px;height:{g_calc_doc_height}px;left:{g_doc_left}px;top:{g_doc_top}px"  >
 	
 		</canvas>
