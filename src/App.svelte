@@ -3,7 +3,6 @@
 	import {HsvPicker} from 'svelte-color-picker';
 	import FloatWindow from 'svelte-float-window';
 	import { popup_size } from '../utils/display-utils.js'
-	import { erase_canvas, grid_on_canvas } from '../utils/canvas-utils.js'
 	import Ruler from './ruler.svelte'
 	import Modal from './modal.svelte'
 	import { onMount } from 'svelte';
@@ -20,6 +19,8 @@
 
 	import {db_startup, db_store} from '../utils/db-utils'
 
+	import CanEdit from './can_edit.svelte'
+    
 	// https://github.com/agrinko/js-undo-manager
 	// https://github.com/dnass/svelte-canvas
 
@@ -33,6 +34,22 @@
 // https://www.tutorialrepublic.com/html-tutorial/html5-canvas.php
 // https://github.com/ericdrowell/concrete
 //
+
+	let project_selected = false
+	let g_db_store = null
+	let g_exportable = false
+	db_store.subscribe((db_obj) => {
+		if ( !db_obj ) {
+			project_selected = false
+			g_db_store = null
+			g_exportable = false
+		} else {
+			g_db_store = db_obj
+			project_selected = db_obj.ready
+			g_exportable = db_obj.current_file_entry ? db_obj.current_file_entry.name : false
+			if ( g_exportable === undefined || g_exportable === null ) g_exportable = false
+		}
+	})
 
 
 	let window_scale = { "w" : 0.4, "h" : 0.6 }
@@ -99,23 +116,23 @@
 	setTimeout(set_magnification,100)
 
 	// ---- ---- ---- ---- ---- ---- ---- ---- ---- ---- ---- ----
+
+	let edit_props = {
+		height : 460,
+		width : 680,
+		doc_height : 460,
+		doc_width : 680,
+		doc_left : 0,
+		doc_top : 0,
+		drawing_name : (g_db_store.current_file_entry ? g_db_store.current_file_entry.name : "Untitled-1"),
+		grid_on : false,
+		magnification : 1.0,
+		ruler_interval : 50
+	}
+
+
+	// ---- ---- ---- ---- ---- ---- ---- ---- ---- ---- ---- ----
 	//
-	function draw_grid_on_canvas(canvas_el,mag) {
-		let ctxt = canvas_el.getContext("2d");
-		let width = canvas_el.width
-		let height = canvas_el.height
-		erase_canvas(ctxt,width,height)
-		grid_on_canvas(ctxt,width,height,mag,INTERVAL_ruler)
-	}
-
-	function clear_grid_from_canvas(canvas_el,mag) {
-		let ctxt = canvas_el.getContext("2d");
-		let width = canvas_el.width
-		let height = canvas_el.height
-		erase_canvas(ctxt,width,height)
-	}
-	// ----
-
 	function set_magnification(evt) {
 		if ( magnification > 0 ) {
 			if ( g_canvas_system ) {
@@ -146,7 +163,7 @@
 					v_zero_tick = g_doc_top
 					h_zero_tick = g_doc_left
 					if ( g_show_grid && g_canvas_element ) {
-						draw_grid_on_canvas(g_canvas_element,calc_magnification)
+						// draw_grid_on_canvas(g_canvas_element,calc_magnification)
 					}
 				},20)
 
@@ -158,17 +175,21 @@
 	}
 
 	let selection_mode = true
-
 	let tool_cursor = "default"
-	/*
-body {
- cursor: url('some-cursor.ico'), default;
-}
 
-cursor: url('data:image/svg+xml;utf8,<svg xmlns="http://www.w3.org/2000/svg" width="12" height="30" style="font-size: 20px;"><text y="15">¶</text></svg>'), auto;
-      
-// edit-pencil.svg
-*/
+	$: edit_props = {
+		width : g_calc_doc_width,
+		height : g_calc_doc_height,
+		doc_width : g_calc_doc_width,
+		doc_height : g_calc_doc_height,
+		doc_left : g_doc_left,
+		doc_top : g_doc_top,
+		drawing_name : "Untitled-1",
+		grid_on : g_show_grid,
+		magnification : calc_magnification,
+		ruler_interval : INTERVAL_ruler
+	}
+
 
 	let rect_selected = true
 	let text_selected = false
@@ -562,33 +583,19 @@ cursor: url('data:image/svg+xml;utf8,<svg xmlns="http://www.w3.org/2000/svg" wid
 
 	function toggle_grid(evt) {
 		g_show_grid = !g_show_grid
+		/*
 		if ( g_show_grid && g_canvas_element ) {
 			draw_grid_on_canvas(g_canvas_element,calc_magnification)	
 		} else if ( g_canvas_element ) {
 			clear_grid_from_canvas(g_canvas_element,calc_magnification)	
 		}
+		*/
 	}
 
 	function toggle_wireframe(evt) {
 		
 	}
 
-
-	let project_selected = false
-	let g_db_store = null
-	let g_exportable = false
-	db_store.subscribe((db_obj) => {
-		if ( !db_obj ) {
-			project_selected = false
-			g_db_store = null
-			g_exportable = false
-		} else {
-			g_db_store = db_obj
-			project_selected = db_obj.ready
-			g_exportable = db_obj.current_file_entry ? db_obj.current_file_entry.name : false
-			if ( g_exportable === undefined || g_exportable === null ) g_exportable = false
-		}
-	})
 
 </script>
 
@@ -888,6 +895,9 @@ cursor: url('data:image/svg+xml;utf8,<svg xmlns="http://www.w3.org/2000/svg" wid
 		<canvas class="main-canvas" bind:this={g_canvas_element} width={g_calc_doc_width} height={g_calc_doc_height} style="width:{g_calc_doc_width}px;height:{g_calc_doc_height}px;left:{g_doc_left}px;top:{g_doc_top}px"  >
 	
 		</canvas>
+		<CanEdit {...edit_props} />
+
+	
 		<Ruler disposition="horizontal" {ruler_top} {ruler_magnification} zero_tick={h_zero_tick} ruler_interval={INTERVAL_ruler}/>
 		<Ruler disposition="vertical" {ruler_left}  {ruler_magnification} zero_tick={v_zero_tick} ruler_interval={INTERVAL_ruler}/>
 	</div>
