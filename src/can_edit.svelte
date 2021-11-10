@@ -17,9 +17,13 @@
     //
     export let grid_interval = 50
 
+
     let x_mag = 1.0
     let y_mag = 1.0
 
+
+	let canvas_mouse
+	let drawing = false
 
     //
     let can_draw_selected = false
@@ -29,14 +33,10 @@
 
     let draw_control
     let last_name = ""
-    $: if ( draw_control && (last_name !== drawing_name) ) {
+    $: if ( !(draw_control) || (last_name !== drawing_name) ) {
         last_name = drawing_name
         draw_control = set_drawing(drawing_name)
         draw_control.command("clear_all")
-    }
-
-    $: if ( draw_control ) {
-        draw_control.command("set_grid",{"interval" : 50, "grid_on" : grid_on })
     }
 
     $: if ( draw_control ) {
@@ -46,11 +46,78 @@
     }
 
     $: if ( draw_control ) {
-        draw_control.command("set_grid",{"interval" : grid_interval, "grid_on" : grid_on })			
+        draw_control.command("set_grid",{"interval" : grid_interval, "grid_on" : grid_on })
+    }
+
+	let mouse_x = 0
+	let mouse_y = 0
+	$: if ( draw_control && canvas_mouse ) {
+		mouse_x = (canvas_mouse.x/x_mag)
+		mouse_y = (canvas_mouse.y/y_mag)
+		if ( drawing ) {
+			if ( can_draw_selected ) {
+				let points = can_draw_selected.pars.points
+				points[2] = mouse_x - points[0]
+				points[3] = mouse_y - points[1]
+				let new_pars = Object.assign(can_draw_selected.pars,{ 'points': points })
+				draw_control.update(new_pars)
+			}
+		}
 	}
 
-    //
+
+	function start_tracking(evt) {
+		drawing = true
+		draw_control.add("rect",{ "thick" : 2, "line" : "black", "fill" : "rgba(100,200,220,0.9)", "points" : [mouse_x,mouse_y,2,2] })
+		draw_control.command("select_top")
+	}
+
+	function stop_tracking(evt) {
+		drawing = false
+	}
+
 /*
+	// // //
+	let m = { x: 0, y: 0, w: 0, h: 0 };
+	let drawing = false
+	function handleMousemove(evt) {
+		if ( drawing ) {
+			let new_x = (evt.clientX - doc_left);
+			let new_y = (evt.clientY - doc_top);
+			let w = new_x - m.x;
+			let h = new_y - m.y;
+			m.x = new_x;
+			m.y = new_y;
+			//
+			draw_control.command("select_top")
+			if ( can_draw_selected ) {
+				let points = can_draw_selected.pars.points
+				points[2] = w
+				points[3] = h
+				let new_pars = Object.assign(can_draw_selected.pars,{ 'points': points })
+				draw_control.update(new_pars)
+			}
+		}
+	}
+
+	function start_tracking(evt) {
+		drawing = true
+		m = { 
+			x: (evt.clientX - doc_left), 
+			y: (evt.clientY - doc_top),
+			w: 0,
+			h: 0
+		}
+		draw_control.add("rect",{ "thick" : 2, "line" : "black", "fill" : "rgba(100,200,220,0.9)", "points" : [m.x,m.y,2,2] })
+	}
+
+	function stop_tracking(evt) {
+		drawing = false
+	}
+
+
+    //
+
     //
 	let can_draw_selected = false
 	let shape_index = -1
@@ -178,10 +245,12 @@
 		}
 	}
 
+	on:mousedown={start_tracking} on:mousemove={handleMousemove} on:mouseup={stop_tracking}
+	//
 */
 </script>
-<div>
-	<CanDraw bind:selected={can_draw_selected} bind:mouse_to_shape={shape_index}  {height} {width} {doc_left} {doc_top} {doc_width} {doc_height}  />
+<div on:mousedown={start_tracking} on:mouseup={stop_tracking}>
+	<CanDraw bind:selected={can_draw_selected} bind:mouse_to_shape={shape_index} bind:canvas_mouse={canvas_mouse}  {height} {width} {doc_left} {doc_top} {doc_width} {doc_height}  />
 </div>
 <style>
 
