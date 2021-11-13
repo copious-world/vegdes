@@ -1,7 +1,5 @@
 <script>
     import CanDraw from "svelte-can-draw"
-    import { draggable } from 'svelte-drag';
-import { bind } from "svelte/internal";
 
     export let height = 460
     export let width = 680
@@ -100,6 +98,16 @@ import { bind } from "svelte/internal";
 	let prev_select_width = 30
 	let prev_select_height = 30
 
+	let handle_box_tl = false
+	let handle_box_top = false
+	let handle_box_bl = false
+	let handle_box_left = false
+	let handle_box_bottom = false
+	let handle_box_tr = false
+	let handle_box_right = false
+	let handle_box_br = false
+
+
 	function save_selection_bounds() {
 		prev_select_left = select_left
 		prev_select_top = select_top
@@ -115,6 +123,43 @@ import { bind } from "svelte/internal";
 		select_height = prev_select_height
 	}
 
+	function update_selected_object(dx,dy,xchange,ychange,diff_source) {
+		if ( can_draw_selected ) {
+			if ( can_draw_selected.shape === 'rect' ) {
+				let points = can_draw_selected.pars.points
+				if ( diff_source ) {
+					if ( diff_source === handle_box_tl) {
+						if ( xchange ) points[0] += dx
+						if ( ychange ) points[1] += dy
+					} else if ( diff_source === handle_box_top) {
+						if ( ychange ) points[1] += dy
+					} else if ( diff_source === handle_box_bl) {
+						if ( xchange ) points[0] += dx
+					} else if ( diff_source === handle_box_left) {
+						if ( xchange ) points[0] += dx
+					} else if ( diff_source === handle_box_tr) {
+						if ( ychange ) points[1] += dy
+					}
+					/*
+					else if ( diff_source === handle_box_bottom) {
+					} else if ( diff_source === handle_box_right) {
+					} else if ( diff_source === handle_box_br) {
+					}
+					*/
+
+				} else {
+					points[0] += dx
+					points[1] += dy
+				}
+				if ( xchange ) points[2] = select_width
+				if ( ychange ) points[3] = select_height
+				let new_pars = Object.assign(can_draw_selected.pars,{ 'points': points })
+				draw_control.update(new_pars)
+			}
+		}
+	}
+
+	//
 	function selection_positions() {
 		let half_height = Math.floor(select_height/2)
 		let half_width = Math.floor(select_width/2)
@@ -169,9 +214,50 @@ import { bind } from "svelte/internal";
 			draw_control.command("select_top")
 		} else if ( tool === 'select' ) {
 			selection_on = !selection_on
-			set_selection_controls(selection_on)
-			if ( shape_index >= 0 ) {
-
+			//
+			draw_control.searching({ "mouse_loc" : [canvas_mouse.x,canvas_mouse.y] })
+			if ( (shape_index !== false) && (shape_index >= 0) ) {
+				draw_control.command("select",{"select" : shape_index})
+				if ( shape_index >= 0 ) {
+					selection_on = true
+				}
+			}
+			//
+			if ( (shape_index !== false) && (shape_index >= 0) ) {
+				let sel_bounds = can_draw_selected.bounds
+				prev_select_left = sel_bounds[0] + doc_left // relative to the canvas
+				prev_select_top = sel_bounds[1] + doc_top
+				prev_select_width = sel_bounds[2]
+				prev_select_height = sel_bounds[3]
+				set_selection_controls(selection_on)
+				if ( selection_on ) {
+					let mock_evt = {
+						target : selection_box,
+						clientX : evt.clientX,
+						clientY : evt.clientY
+					}
+					grab_selection(mock_evt)
+				}
+				set_selection_controls(selection_on)
+			} else {
+				if ( selection_on ) {
+					var rect = drag_region.getBoundingClientRect();
+					var mouseX = evt.clientX - rect.left;
+					var mouseY = evt.clientY - rect.top;
+					//
+					prev_select_left = mouseX - 10
+					prev_select_top = mouseY - 10
+					prev_select_width = 10
+					prev_select_height = 10
+					
+					let mock_evt = {
+						target : handle_box_br,
+						clientX : evt.clientX,
+						clientY : evt.clientY
+					}
+					grab_handle(mock_evt)
+				}
+				set_selection_controls(selection_on)
 			}
 		} 
 	}
@@ -213,6 +299,9 @@ import { bind } from "svelte/internal";
 			select_top += dif_y
 			selection_positions()
 			save_selection_bounds()
+			if ( (shape_index !== false) && (shape_index >= 0) ) {
+				update_selected_object(dif_x,dif_y,true,true)
+			}
 		}
 		if ( handle_selected && grabbable_handle && (evt.buttons == 1) ) {
 			let new_x = evt.clientX
@@ -221,9 +310,12 @@ import { bind } from "svelte/internal";
 			let dif_y = new_y - selection_mouse.y
 			selection_mouse.x = new_x
 			selection_mouse.y = new_y
-			grabbable_handle._added_size_changer(dif_x,dif_y)
+			let [xtrue,ytrue] = grabbable_handle._added_size_changer(dif_x,dif_y)
 			selection_positions()
 			save_selection_bounds()
+			if ( (shape_index !== false) && (shape_index >= 0) ) {
+				update_selected_object(dif_x,dif_y,xtrue,ytrue,grabbable_handle)
+			}
 		}
 		if ( evt.buttons === 0 ) {
 			drag_selection = false
@@ -239,15 +331,6 @@ import { bind } from "svelte/internal";
 	}
 
 
-	let handle_box_tl = false
-	let handle_box_top = false
-	let handle_box_bl = false
-	let handle_box_left = false
-	let handle_box_bottom = false
-	let handle_box_tr = false
-	let handle_box_right = false
-	let handle_box_br = false
-
 	function grab_handle(evt) {
 		handle_selected = true
 		selection_mouse.x = evt.clientX
@@ -255,52 +338,112 @@ import { bind } from "svelte/internal";
 		grabbable_handle = evt.target
 		if ( handle_box_tl == evt.target ) {
 			handle_box_tl._added_size_changer = (dx,dy) => {
-				select_left += dx
-				select_top += dy
-				select_width -= dx
-				select_height -= dy
+				let xchange = false
+				let ychange = false
+				if ( (select_width - dx) >= 0 ) {
+					select_left += dx
+					select_width -= dx
+					xchange = true
+				}
+				if ( (select_height - dy) >= 0 ) {
+					select_top += dy
+					select_height -= dy
+					ychange = true
+				}
+				return [xchange,ychange]
 			}
 		}
 		if ( handle_box_top == evt.target ) {
 			handle_box_top._added_size_changer = (dx,dy) => {
-				select_top += dy
-				select_height -= dy
+				let xchange = false
+				let ychange = false
+				if ( (select_height - dy) >= 0 ) {
+					select_top += dy
+					select_height -= dy
+					ychange = true
+				}
+				return [xchange,ychange]
 			}
 		}
 		if ( handle_box_bl == evt.target ) {
 			handle_box_bl._added_size_changer = (dx,dy) => {
-				select_left += dx
-				select_width -= dx
-				select_height += dy
+				let xchange = false
+				let ychange = false
+				if ( (select_width - dx) >= 0 ) {
+					select_left += dx
+					select_width -= dx
+					xchange = true
+				}
+				if ( (select_height + dy) >= 0 ) {
+					select_height += dy
+					ychange = true
+				}
+				return [xchange,ychange]
 			}
 		}
 		if ( handle_box_left == evt.target ) {
 			handle_box_left._added_size_changer = (dx,dy) => {
-				select_left += dx
-				select_width -= dx
+				let xchange = false
+				let ychange = false
+				if ( (select_width - dx) >= 0 ) {
+					select_left += dx
+					select_width -= dx
+					xchange = true
+				}
+				return [xchange,ychange]
 			}
 		}
 		if ( handle_box_bottom == evt.target ) {
 			handle_box_bottom._added_size_changer = (dx,dy) => {
-				select_height += dy
+				let xchange = false
+				let ychange = false
+				if ( (select_height + dy) >= 0 ) {
+					select_height += dy
+					ychange = true
+				}
+				return [xchange,ychange]
 			}
 		}
 		if ( handle_box_tr == evt.target ) {
 			handle_box_tr._added_size_changer = (dx,dy) => {
-				select_top += dy
-				select_width += dx
-				select_height -= dy
+				let xchange = false
+				let ychange = false
+				if ( (select_height - dy) >= 0 ) {
+					select_top += dy
+					select_height -= dy
+					ychange = true
+				}
+				if ( (select_width + dx) >= 0 ) {
+					select_width += dx
+					xchange = true
+				}
+				return [xchange,ychange]
 			}
 		}
 		if ( handle_box_right == evt.target ) {
 			handle_box_right._added_size_changer = (dx,dy) => {
-				select_width += dx
+				let xchange = false
+				let ychange = false
+				if ( (select_width + dx) >= 0 ) {
+					select_width += dx
+					xchange = true
+				}
+				return [xchange,ychange]
 			}
 		}
 		if ( handle_box_br == evt.target ) {
 			handle_box_br._added_size_changer = (dx,dy) => {
-				select_width += dx
-				select_height += dy
+				let xchange = false
+				let ychange = false
+				if ( (select_width + dx) >= 0 ) {
+					select_width += dx
+					xchange = true
+				}
+				if ( (select_height + dy) >= 0 ) {
+					select_height += dy
+					ychange = true
+				}
+				return [xchange,ychange]
 			}
 		}
 
@@ -470,7 +613,7 @@ import { bind } from "svelte/internal";
 
 	.selection-box {
 		position: absolute;
-		border : solid grey 1px;
+		border : dotted grey 1px;
 		background-color: transparent;
 	}
 
