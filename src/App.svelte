@@ -127,7 +127,8 @@
 		drawing_name : (g_db_store.current_file_entry ? g_db_store.current_file_entry.name : "Untitled-1"),
 		grid_on : false,
 		magnification : 1.0,
-		ruler_interval : 50
+		ruler_interval : 50,
+		tool : "select"
 	}
 
 
@@ -176,6 +177,7 @@
 
 	let selection_mode = true
 	let tool_cursor = "default"
+	let g_current_tool = "select"
 
 	$: edit_props = {
 		width : g_calc_doc_width,
@@ -187,7 +189,8 @@
 		drawing_name : "Untitled-1",
 		grid_on : g_show_grid,
 		magnification : calc_magnification,
-		ruler_interval : INTERVAL_ruler
+		ruler_interval : INTERVAL_ruler,
+		tool : g_current_tool
 	}
 
 
@@ -234,6 +237,7 @@
 		curve_selected = false
 		//
 		mode_toggle = mode_name
+		g_current_tool = mode_name
 		switch ( mode_name ) {
 			case 'select': {
 				selection_mode = false
@@ -309,6 +313,7 @@
 				break
 			}
 			default: {
+				g_current_tool = "select"
 				break
 			}
 		}
