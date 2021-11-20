@@ -16,6 +16,7 @@
     //
     export let grid_interval = 50
 	export let tool = "select"
+	export let tool_parameters = false
 
 	let selection_on = false
 	let select_left = 0
@@ -26,6 +27,9 @@
     let x_mag = 1.0
     let y_mag = 1.0
 
+	let prev_doc_left = doc_left
+	let prev_doc_top = doc_top
+
 
 	let canvas_mouse
 	let drawing = false
@@ -33,6 +37,8 @@
     //
     let can_draw_selected = false
     let shape_index = false
+
+	let canvas_changed = false
 
     let set_drawing = CanDraw.draw_model.set_drawing
 
@@ -44,10 +50,16 @@
         draw_control.command("clear_all")
     }
 
+	//let change_count = 0
     $: if ( draw_control ) {
-        x_mag = magnification
-        y_mag = magnification
-        draw_control.command("scale_redraw",{"scale" : [x_mag,y_mag]})
+		if ( magnification !== x_mag ) {
+			x_mag = magnification
+			y_mag = magnification
+			draw_control.command("scale_redraw",{"scale" : [x_mag,y_mag]})
+			if ( canvas_mouse && (tool === "select") && selection_on ) {
+				magnification_recover()
+			}
+		}
     }
 
     $: if ( draw_control ) {
@@ -62,8 +74,10 @@
 		if ( drawing ) {
 			if ( can_draw_selected ) {
 				let points = can_draw_selected.pars.points
-				points[2] = mouse_x - points[0]
-				points[3] = mouse_y - points[1]
+				let new_left = mouse_x - points[0]
+				if ( new_left > 0 ) { points[2] = new_left }
+				let new_top = mouse_y - points[1]
+				if ( new_top > 0 ) { points[3] = new_top }
 				let new_pars = Object.assign(can_draw_selected.pars,{ 'points': points })
 				draw_control.update(new_pars)
 			}
@@ -161,23 +175,28 @@
 
 	//
 	function selection_positions() {
-		let half_height = Math.floor(select_height/2)
-		let half_width = Math.floor(select_width/2)
-		let delta = 2
-		selection_style = `visibilty:visible;display:block;left:${select_left}px;top:${select_top}px;width:${select_width}px;height:${select_height}px`
+		// mag
+		let half_height = Math.floor(magnification*select_height/2)
+		let half_width = Math.floor(magnification*select_width/2)
+		let mag_select_left = (select_left)*magnification
+		let mag_select_top = (select_top)*magnification
+		let mag_select_width = select_width*magnification + magnification
+		let mag_select_height = select_height*magnification + magnification
+		let delta = 2*magnification
+		selection_style = `visibilty:visible;display:block;left:${mag_select_left}px;top:${mag_select_top}px;width:${mag_select_width}px;height:${mag_select_height}px`
 		selection_style += ";cursor:move"
 		//grab_selection
 		//
-		handle_top_left_style = `visibilty:visible;display:block;left:${select_left - delta}px;top:${select_top - delta}px;`
-		handle_left_style = `visibilty:visible;display:block;left:${select_left - delta}px;top:${select_top + half_height - delta}px;`
-		handle_bottom_left_style = `visibilty:visible;display:block;left:${select_left - delta}px;top:${select_top + select_height - delta}px;`
+		handle_top_left_style = `visibilty:visible;display:block;left:${mag_select_left - delta}px;top:${mag_select_top - delta}px;`
+		handle_left_style = `visibilty:visible;display:block;left:${mag_select_left - delta}px;top:${mag_select_top + half_height - delta}px;`
+		handle_bottom_left_style = `visibilty:visible;display:block;left:${mag_select_left - delta}px;top:${mag_select_top + mag_select_height - delta}px;`
 		//
-		handle_top_style = `visibilty:visible;display:block;left:${select_left + half_width - delta}px;top:${select_top - delta}px;`
-		handle_bottom_style = `visibilty:visible;display:block;left:${select_left + half_width - delta}px;top:${select_top + select_height - delta}px;`
+		handle_top_style = `visibilty:visible;display:block;left:${mag_select_left + half_width - delta}px;top:${mag_select_top - delta}px;`
+		handle_bottom_style = `visibilty:visible;display:block;left:${mag_select_left + half_width - delta}px;top:${mag_select_top + mag_select_height - delta}px;`
 		//
-		handle_top_right_style = `visibilty:visible;display:block;left:${select_left + select_width - delta}px;top:${select_top - delta}px;`
-		handle_right_style = `visibilty:visible;display:block;left:${select_left + select_width - delta}px;top:${select_top + half_height- delta}px;`
-		handle_bottom_right_style = `visibilty:visible;display:block;left:${select_left + select_width - delta}px;top:${select_top + select_height - delta}px;`
+		handle_top_right_style = `visibilty:visible;display:block;left:${mag_select_left + mag_select_width - delta}px;top:${mag_select_top - delta}px;`
+		handle_right_style = `visibilty:visible;display:block;left:${mag_select_left + mag_select_width - delta}px;top:${mag_select_top + half_height- delta}px;`
+		handle_bottom_right_style = `visibilty:visible;display:block;left:${mag_select_left + mag_select_width - delta}px;top:${mag_select_top + mag_select_height - delta}px;`
 	}
 
 	function set_selection_controls(sel) {
@@ -205,6 +224,47 @@
 	}
 
 
+	let g_recovering_resize = false
+	function magnification_recover() {
+		g_recovering_resize = true
+		//
+	}
+
+	$: {
+		if ( canvas_changed ) {
+			canvas_changed = false
+			prev_doc_left = doc_left
+			prev_doc_top = doc_top
+			if ( g_recovering_resize ) {
+				g_recovering_resize = false
+				setTimeout(() => {
+					selection_on = false
+					let points = can_draw_selected.pars.points
+					canvas_mouse.x = points[0]*magnification + 2
+					canvas_mouse.y = points[1]*magnification + 2
+					//
+					let mock_evt = {
+									target : selection_box,
+									clientX : 0,
+									clientY : 0
+								}
+					//
+					start_tracking(mock_evt)
+				},20)
+			}
+		//}
+		}
+	}
+
+	const gc_shape_list = [ 'ellipse', 'circle', 'polygon', 'star' ]
+	function is_shape(tool) {
+		if ( gc_shape_list.indexOf(tool) >= 0 ) {
+			return true
+		}
+		return false
+	}
+
+
 	function start_tracking(evt) {
 		if ( tool === 'rect'  ) {
 			selection_on = false
@@ -212,10 +272,17 @@
 			drawing = true
 			draw_control.add("rect",{ "thick" : 2, "line" : "black", "fill" : "rgba(100,200,220,0.9)", "points" : [mouse_x,mouse_y,2,2] })
 			draw_control.command("select_top")
+		} else if ( is_shape(tool) && ( tool_parameters !== false ) ) {
+			selection_on = false
+			set_selection_controls(false)
+			drawing = true
+			draw_control.add(tool_parameters.shape,tool_parameters.parameters)
+			draw_control.command("select_top")
+			//
 		} else if ( tool === 'select' ) {
 			selection_on = !selection_on
 			//
-			draw_control.searching({ "mouse_loc" : [canvas_mouse.x,canvas_mouse.y] })
+			draw_control.searching({ "mouse_loc" : [canvas_mouse.x/magnification,canvas_mouse.y/magnification] })
 			if ( (shape_index !== false) && (shape_index >= 0) ) {
 				draw_control.command("select",{"select" : shape_index})
 				if ( shape_index >= 0 ) {
@@ -225,8 +292,8 @@
 			//
 			if ( (shape_index !== false) && (shape_index >= 0) ) {
 				let sel_bounds = can_draw_selected.bounds
-				prev_select_left = sel_bounds[0] + doc_left // relative to the canvas
-				prev_select_top = sel_bounds[1] + doc_top
+				prev_select_left = sel_bounds[0] + doc_left/magnification // relative to the canvas
+				prev_select_top = sel_bounds[1] + doc_top/magnification
 				prev_select_width = sel_bounds[2]
 				prev_select_height = sel_bounds[3]
 				set_selection_controls(selection_on)
@@ -245,7 +312,7 @@
 					var mouseX = evt.clientX - rect.left;
 					var mouseY = evt.clientY - rect.top;
 					//
-					prev_select_left = mouseX - 10
+					prev_select_left = mouseX - 10  // magnification
 					prev_select_top = mouseY - 10
 					prev_select_width = 10
 					prev_select_height = 10
@@ -291,8 +358,8 @@
 		if ( drag_selection && selection_box && (evt.buttons == 1) ) {
 			let new_x = evt.clientX
 			let new_y = evt.clientY
-			let dif_x = new_x - selection_mouse.x
-			let dif_y = new_y - selection_mouse.y
+			let dif_x = (new_x - selection_mouse.x)/magnification
+			let dif_y = (new_y - selection_mouse.y)/magnification
 			selection_mouse.x = new_x
 			selection_mouse.y = new_y
 			select_left += dif_x
@@ -306,8 +373,8 @@
 		if ( handle_selected && grabbable_handle && (evt.buttons == 1) ) {
 			let new_x = evt.clientX
 			let new_y = evt.clientY
-			let dif_x = new_x - selection_mouse.x
-			let dif_y = new_y - selection_mouse.y
+			let dif_x = (new_x - selection_mouse.x)/magnification
+			let dif_y = (new_y - selection_mouse.y)/magnification
 			selection_mouse.x = new_x
 			selection_mouse.y = new_y
 			let [xtrue,ytrue] = grabbable_handle._added_size_changer(dif_x,dif_y)
@@ -451,27 +518,6 @@
 
 /*
     //
-    //
-	let can_draw_selected = false
-	let shape_index = -1
-
-	function draw_stuff() {
-		draw_control.command("clear_all")
-		draw_control.add("rect",{ "thick" : 2, "line" : "black", "fill" : "rgba(100,200,220,0.9)", "points" : [10,10,20,20] })
-		draw_control.add("circle",{ "thick" : 3, "line" : "red", "fill" : "rgba(200,200,120,0.6)", "points" : [50,50,60] })
-		draw_control.add("ellipse",{ "thick" : 2, "line" : "blue", "fill" : "rgba(100,200,120,0.8)", "points" : [100,80,40,70,(Math.PI/4)] })
-		draw_control.add("line",{ "thick" : 4, "line" : "black", "fill" : "rgba(100,50,50,0.9)", "points" : [30,30,100,200] })
-		draw_control.add("polygon",{ "thick" : 3, "line" : "black", "fill" : "rgba(5,100,20,0.9)", "points" : [220,90,90], "sides" : 7 })
-		draw_control.add("star",{ "thick" : 4, "line" : "navy", "fill" : "yellow", "points" : [90,220,90], "star_points" : 5, 
-												"orient" : "edge", "radial_shift" : 0, "radius_multiplier" : 4 })
-
-		draw_control.add("text",{ "thick" : 2, "line" : "black", "fill" : "rgba(220,100,20,0.7)", "points" : [200,250], 
-									"text" : "Testing one and all", "font":  "bold 32px Arial",
-									"textAlign" : "center", "textBaseline" : "middle"
-								})
-
-	}
-
 	//
 	function reverse_stuff() {
 		draw_control.command("reverse_redraw")		
@@ -487,106 +533,11 @@
 		draw_control.command("send_top",{"select" : false})
 	}
 
-
-	function move_draw_selected() {
-		draw_control.command("select_top")
-		if ( can_draw_selected ) {
-			let count = 0
-			let Intrvl = setInterval(() => {
-				count++
-				if ( count == 50 ) {
-					clearInterval(Intrvl)
-				}
-				let points = can_draw_selected.pars.points
-				points[0] += 2
-				points[1] += 2
-				let new_parse = Object.assign(can_draw_selected.pars,{ 'points': points })
-				draw_control.update(new_parse)
-			},5)
-		}
-	}
-
-	function move_back() {
-		draw_control.command("select_top")
-		if ( can_draw_selected ) {
-			let count = 0
-			let Intrvl = setInterval(() => {
-				count++
-				if ( count == 50 ) {
-					clearInterval(Intrvl)
-				}
-				let points = can_draw_selected.pars.points
-				points[0] -= 2
-				points[1] -= 2
-				let new_parse = Object.assign(can_draw_selected.pars,{ 'points': points })
-				draw_control.update(new_parse)
-			},5)
-		}
-	}
-
-	function find_shape() {
-		draw_control.searching({ "mouse_loc" : [15,15] })
-	}
-
-	let funny_toggle = false
-	let sel_object_type = ""
-	function resize_found() {
-		draw_control.searching({ "mouse_loc" : [15,15] })
-		if ( (shape_index !== false) && (shape_index >= 0) ) {
-			draw_control.command("select",{"select" : shape_index})
-			if ( can_draw_selected ) {
-				sel_object_type = can_draw_selected.cmd
-				let count = 0
-				funny_toggle = !funny_toggle
-				let Intrvl = setInterval(() => {
-					count++
-					if ( count == 50 ) {
-						clearInterval(Intrvl)
-					}
-					let points = can_draw_selected.pars.points
-					if ( funny_toggle ) {
-						points[2] += 2
-						points[3] += 2
-					} else {
-						points[2] -= 2
-						points[3] -= 2
-					}
-					let new_parse = Object.assign(can_draw_selected.pars,{ 'points': points })
-					draw_control.update(new_parse)
-				},5)
-			}
-		}
-	}
-
-
-	let scaley_toggle = false
-	function scale_drawing() {
-		scaley_toggle = !scaley_toggle
-		if ( scaley_toggle ) {
-			draw_control.command("scale_redraw",{"scale" : [1.3,1.3]})
-		} else {
-			draw_control.command("scale_redraw",{"scale" : [1.0,1.0]})
-		}
-	}
-
-    let grid_toggle = false
-	function toggle_grid() {
-		if ( grid_toggle ) {
-			draw_control.command("set_grid",{"interval" : grid_interval, "grid_on" : true })			
-		} else {
-			draw_control.command("set_grid",{"interval" : grid_interval, "grid_on" : false })			
-		}
-	}
-
-	on:mousedown={start_tracking} on:mousemove={handleMousemove} on:mouseup={stop_tracking}
-	//
-
-	 ? "visibilty:visible;display:block" : "visibilty:hidden;display:none"
 */
 
 </script>
 <div bind:this={drag_region} on:mousedown={start_tracking} on:mouseup={stop_tracking} style="height:inherit;width:inherit" on:mousemove={reposition} on:mouseup={stop_drags}>
-	<CanDraw bind:selected={can_draw_selected} bind:mouse_to_shape={shape_index} bind:canvas_mouse={canvas_mouse}  {height} {width} {doc_left} {doc_top} {doc_width} {doc_height}  />
+	<CanDraw bind:selected={can_draw_selected} bind:mouse_to_shape={shape_index} bind:canvas_mouse={canvas_mouse}  bind:canvas_changed={canvas_changed} {height} {width} {doc_left} {doc_top} {doc_width} {doc_height}  />
 	<div bind:this={selection_box} class="selection-box" style={selection_style} on:mousedown|capture|preventDefault|stopPropagation={grab_selection} >&nbsp</div>
 	<div bind:this={handle_box_tl} class="handle-box top-left-c" style={handle_top_left_style} on:mousedown|capture|preventDefault|stopPropagation={grab_handle} >&nbsp</div>
 	<div bind:this={handle_box_top} class="handle-box top-c"  style={handle_top_style} on:mousedown|capture|preventDefault|stopPropagation={grab_handle} >&nbsp</div>

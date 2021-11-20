@@ -94,6 +94,8 @@
 	let g_calc_doc_width = g_doc_width
 	let g_calc_doc_height = g_doc_height
 
+	let g_regular_shape = false
+
 
 	let magnification = 100
 	let calc_magnification = magnification/100.0
@@ -117,18 +119,21 @@
 
 	// ---- ---- ---- ---- ---- ---- ---- ---- ---- ---- ---- ----
 
+	let g_current_parameters = false
+
 	let edit_props = {
-		height : 460,
-		width : 680,
-		doc_height : 460,
-		doc_width : 680,
-		doc_left : 0,
-		doc_top : 0,
-		drawing_name : (g_db_store.current_file_entry ? g_db_store.current_file_entry.name : "Untitled-1"),
-		grid_on : false,
-		magnification : 1.0,
-		ruler_interval : 50,
-		tool : "select"
+		'height' : 460,
+		'width' : 680,
+		'doc_height' : 460,
+		'doc_width' : 680,
+		'doc_left' : 0,
+		'doc_top' : 0,
+		'drawing_name' : (g_db_store.current_file_entry ? g_db_store.current_file_entry.name : "Untitled-1"),
+		'grid_on' : false,
+		'magnification' : 1.0,
+		'ruler_interval' : 50,
+		'tool' : "select",
+		'tool_parameters' : g_current_parameters
 	}
 
 
@@ -180,17 +185,18 @@
 	let g_current_tool = "select"
 
 	$: edit_props = {
-		width : g_calc_doc_width,
-		height : g_calc_doc_height,
-		doc_width : g_calc_doc_width,
-		doc_height : g_calc_doc_height,
-		doc_left : g_doc_left,
-		doc_top : g_doc_top,
-		drawing_name : "Untitled-1",
-		grid_on : g_show_grid,
-		magnification : calc_magnification,
-		ruler_interval : INTERVAL_ruler,
-		tool : g_current_tool
+		'width' : g_calc_doc_width,
+		'height' : g_calc_doc_height,
+		'doc_width' : g_calc_doc_width,
+		'doc_height' : g_calc_doc_height,
+		'doc_left' : g_doc_left,
+		'doc_top' : g_doc_top,
+		'drawing_name' : "Untitled-1",
+		'grid_on' : g_show_grid,
+		'magnification' : calc_magnification,
+		'ruler_interval' : INTERVAL_ruler,
+		'tool' : g_current_tool,
+		'tool_parameters' : g_current_parameters
 	}
 
 
@@ -198,6 +204,7 @@
 	let text_selected = false
 	let path_selected = false
 	let circle_selected = false
+	let ellipse_selected = false
 	let line_selected = false
 	let polygon_selected = false
 	let star_selected = false
@@ -225,6 +232,7 @@
 		text_selected = false
 		path_selected = false
 		circle_selected = false
+		ellipse_selected = false
 		line_selected = false
 		polygon_selected = false
 		star_selected = false
@@ -271,6 +279,11 @@
 			}
 			case 'ellipse': {
 				selection_mode = true
+				if ( g_regular_shape ) {
+					circle_selected = true
+				} else {
+					ellipse_selected = false
+				}
 				circle_selected = true
 				tool_cursor = `url(./images/ellipse-tool.svg), auto`
 				break
@@ -337,6 +350,7 @@
 	//
 	let object_cx = 0.0
 	let object_cy = 0.0
+	let object_r = 0.0
 	let object_rx = 0.0
 	let object_ry = 0.0
 
@@ -352,6 +366,24 @@
 	let object_text_bold = false
 	let object_text_italic = false
 	let object_text_font = "Serif"
+	let object_text_align = "left"
+	let object_text_align_left = true
+	let object_text_align_center = false
+	let object_text_align_right = false
+
+	let object_spline = false
+	let object_curve = "bezier"  // "quadratic"
+
+	let object_cp1 = { "x" : 0, "y" : 0}
+	let object_cp2 = { "x" : 0, "y" : 0}
+
+
+
+	$: {
+		object_text_align = object_text_align_left ? "left" : ( object_text_align_center ? "center" : "right")
+	}
+
+	let object_text = "this is a test"
 
 	let object_text_fonts = [
 		{ value : 1, text :"Serif" },
@@ -364,23 +396,65 @@
 		{ value : 8, text :"Times" }
 	]
 
+	let g_generalized_parameters = {}
+
+	$: g_generalized_parameters = {
+		'object_x': object_x,
+		'object_y': object_y,
+		'object_width': object_width,
+		'object_height': object_height,
+		//
+		'object_x1': object_x1,
+		'object_y1': object_y1,
+		'object_x2': object_x2,
+		'object_y2': object_y2,
+		//
+		'object_cx': object_cx,
+		'object_cy': object_cy,
+		'object_r': object_r,
+		'object_rx': object_rx,
+		'object_ry': object_ry,
+
+
+		'object_points': object_points,
+		'object_sides': object_sides,
+		'object_pointiness': object_pointiness,
+		'object_radial_shift': object_radial_shift,
+
+		'object_rotate': object_rotate,
+		'object_corner': object_corner,
+
+		'object_text_bold': object_text_bold,
+		'object_text_italic': object_text_bold,
+		'object_text_font': object_text_font,
+		'object_align' : object_text_align,
+		'object_text' : object_text
+	}
+
 	//
 	let text_names = ["x", "y", "bold", "italic", "font", "align-left", "align-center", "align-right"]
 	let rect_names = ["x", "y", "w", "h", "corner"]
-	let circle_names = ["cx", "cy", "rx", "ry"]
+	let circle_names = ["cx", "cy", "r"]
+	let ellipse_names = ["cx", "cy", "rx", "ry"]
 	let line_names = ["x1", "y1", "x2", "y2"]
 	let path_names = ["x", "y"]
-	let polygon_names = ["x", "y", "sides"]
-	let star_names = ["x", "y", "points", "pointiness", "radial-shift"]
+	let polygon_names = ["x", "y", "r"]
+	let star_names = ["x", "y", "r", "points", "pointiness", "radial-shift"]
 	let component_names = ["x", "y"]
 	let group_names = ["x", "y", "group", "relative", "align-left", "align-center", "align-right", "align-top", "align-middle", "align-bottom"]
 	let grouped_names = ["x", "y", "label", "ungroup" ]
-	let curve_names = ["x", "y", "curve", "clone-node", "delete-node", "subpath", "add-subpath" ]
+	let curve_names = ["x1", "y1", "x2", "y2", "curve", "clone-node", "delete-node", "subpath", "add-subpath" ]
+	//
+	let bezier_names = ["x1", "y1", "x2", "y2", ]
+	let quadratic_names = ["x1", "y1", "x2", "y2" ]
 
 	function selection_mode_var(var_name) {
 		if ( selection_mode && (var_name == "rotate") ) return true
 
 		if ( circle_selected && circle_names.indexOf(var_name) >= 0 ) {
+			return true
+		}
+		if ( ellipse_selected && ellipse_names.indexOf(var_name) >= 0 ) {
 			return true
 		}
 		if ( line_selected && line_names.indexOf(var_name) >= 0 ) {
@@ -415,6 +489,170 @@
 		}
 
 		return false
+	}
+
+	function tool_to_shape(tool) { 
+		switch ( tool ) {
+			case "ellipse" : {
+				if ( g_regular_shape ) {
+					return "circle"
+				} else return "ellipse"
+			}
+			case "rect" : {
+				if ( g_regular_shape ) {
+					return "rect" //"square"
+				} else return "rect"
+			}
+			case "pencil": {
+				if ( g_regular_shape ) {
+					return "line" //"square"
+				} else {
+					return "path"
+				}
+			}
+			case "pen": {
+				if ( g_regular_shape ) {
+					return "line" //"square"
+				} else {
+					object_spline = true
+					if ( object_curve === "bezier" ) {
+						return "bezier"
+					} else {
+						return "quadratic"
+					}
+				}
+			}
+			case "path": {
+				if ( g_regular_shape ) {
+					return "line" //"square"
+				} else {
+					if ( object_curve === "bezier" ) {
+						return "bezier"
+					} else {
+						return "quadratic"
+					}
+				}
+			}
+			default: {
+				return tool
+			}
+		}
+	}
+
+
+	// // shape_to_points_array
+	function shape_to_points_array(shape) {
+		let points = []
+		switch ( shape ) {
+			case "circle" : {
+				points.push(g_generalized_parameters[`object_${circle_names[0]}`])
+				points.push(g_generalized_parameters[`object_${circle_names[1]}`])
+				points.push(g_generalized_parameters[`object_${circle_names[2]}`])
+				break
+			}
+			case "ellipse" : {
+				points.push(g_generalized_parameters[`object_${ellipse_names[0]}`])
+				points.push(g_generalized_parameters[`object_${ellipse_names[1]}`])
+				points.push(g_generalized_parameters[`object_${ellipse_names[2]}`])
+				points.push(g_generalized_parameters[`object_${ellipse_names[3]}`])
+				break
+			}
+			case "line" : {
+				points.push(g_generalized_parameters[`object_${line_names[0]}`])
+				points.push(g_generalized_parameters[`object_${line_names[1]}`])
+				points.push(g_generalized_parameters[`object_${line_names[2]}`])
+				points.push(g_generalized_parameters[`object_${line_names[3]}`])
+				break
+			}
+			case "polygon": {
+				points.push(g_generalized_parameters[`object_${polygon_names[0]}`])
+				points.push(g_generalized_parameters[`object_${polygon_names[1]}`])
+				points.push(g_generalized_parameters[`object_${polygon_names[2]}`])
+				break
+			}
+			case "star" : {
+				points.push(g_generalized_parameters[`object_${star_names[0]}`])
+				points.push(g_generalized_parameters[`object_${star_names[1]}`])
+				points.push(g_generalized_parameters[`object_${star_names[2]}`])
+			}
+			case "text" : {
+				points.push(g_generalized_parameters[`object_${text_names[0]}`])
+				points.push(g_generalized_parameters[`object_${text_names[1]}`])
+			}
+			case "bezier" : {
+				points.push(g_generalized_parameters[`object_${bezier_names[0]}`])
+				points.push(g_generalized_parameters[`object_${bezier_names[1]}`])
+				points.push(g_generalized_parameters[`object_${bezier_names[2]}`])
+				points.push(g_generalized_parameters[`object_${bezier_names[3]}`])
+				break;
+			}
+			case "quadratic" : {
+				points.push(g_generalized_parameters[`object_${quadratic_names[0]}`])
+				points.push(g_generalized_parameters[`object_${quadratic_names[1]}`])
+				points.push(g_generalized_parameters[`object_${quadratic_names[2]}`])
+				points.push(g_generalized_parameters[`object_${quadratic_names[3]}`])
+				break;
+			}
+		}
+		return points
+	}
+
+	function add_shape_extras(shape,parameters) {
+		switch ( shape ) {
+			case "star" : {
+				parameters.radial_shift = object_radial_shift
+				parameters.orient = "edge"
+				parameters.radial_shift = object_radial_shift
+				parameters.radius_multiplier = object_pointiness  // ??
+				parameters.star_points = object_points
+				break;
+			}
+			case "polygon": {
+				parameters.sides = object_sides
+				break;
+			}
+			case "bezier" : {
+				pars.control_points = [object_cp1.x,object_cp1.y,object_cp2.x,object_cp2.y]
+				break;
+			}
+			case "quadratic" : {
+				pars.control_points = [object_cp1.x,object_cp1.y]
+				break;
+			}
+			case "text" : {
+				parameters.text = object_text
+				parameters.textAlign = g_generalized_parameters.object_text_align
+				parameters.textBaseline = "middle"
+				let font_bold = object_text_bold ? "bold" : ""
+				parameters.font = `${font_bold} 32px Arial`
+				parameters.style = "plain"  // italic
+				break;
+			}
+			default: {
+				break;
+			}
+		}
+	}
+
+
+	$: {
+		let shape = tool_to_shape(g_current_tool)
+		let points_array = shape_to_points_array(shape)
+		let rotation = undefined
+		if ( Math.abs(object_rotate) > 0.0005 ) {
+			rotation = object_rotate
+		}
+		g_current_parameters = {
+			"shape" : shape,
+			"parameters" : {
+				"thick" : 2, 
+				"line" : "black", 
+				"fill" : "rgba(100,200,220,0.9)", 
+				"points" : points_array,
+				"rotate" : rotation
+			}
+		}
+		add_shape_extras(shape,g_current_parameters.parameters)
 	}
 
 	//
@@ -718,6 +956,9 @@
 	{/if}
 	{#if g_selector && selection_mode_var('cy') }
 		<span class="top-text" >cy:</span><input type=number  class="top-input"  bind:value={object_cy} />
+	{/if}
+	{#if g_selector && selection_mode_var('r') }
+		<span class="top-text" >R:</span><input type=number  class="top-input"  bind:value={object_r} />
 	{/if}
 	{#if g_selector && selection_mode_var('rx') }
 		<span class="top-text" >rx:</span><input type=number  class="top-input"  bind:value={object_rx} />
