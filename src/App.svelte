@@ -370,6 +370,7 @@
 	let object_text_align_left = true
 	let object_text_align_center = false
 	let object_text_align_right = false
+	let object_text_size = 32
 
 	let object_spline = false
 	let object_curve = "bezier"  // "quadratic"
@@ -624,7 +625,7 @@
 				parameters.textAlign = g_generalized_parameters.object_text_align
 				parameters.textBaseline = "middle"
 				let font_bold = object_text_bold ? "bold" : ""
-				parameters.font = `${font_bold} 32px Arial`
+				parameters.font = `${font_bold} ${object_text_size}px ${object_text_font}`
 				parameters.style = "plain"  // italic
 				break;
 			}
@@ -633,7 +634,12 @@
 			}
 		}
 	}
-
+/*
+	let object_text_bold = false
+	let object_text_italic = false
+	let object_text_font = "Serif"
+	let object_text_align = "left"
+*/
 
 	$: {
 		let shape = tool_to_shape(g_current_tool)
