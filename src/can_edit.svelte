@@ -17,6 +17,10 @@
     export let grid_interval = 50
 	export let tool = "select"
 	export let tool_parameters = false
+	export let shape = "rect"
+
+	export let selected_objects
+	export let selection_changed
 
 	let selection_on = false
 	let select_left = 0
@@ -41,6 +45,16 @@
 	let canvas_changed = false
 
     let set_drawing = CanDraw.draw_model.set_drawing
+
+
+	let selection_active = false
+	$: {
+		if ( selection_active ) {
+			selected_objects = can_draw_selected
+		} else {
+			selected_objects = false
+		}
+	}
 
     let draw_control
     let last_name = ""
@@ -73,13 +87,36 @@
 		mouse_y = (canvas_mouse.y/y_mag)
 		if ( drawing ) {
 			if ( can_draw_selected ) {
-				let points = can_draw_selected.pars.points
-				let new_left = mouse_x - points[0]
-				if ( new_left > 0 ) { points[2] = new_left }
-				let new_top = mouse_y - points[1]
-				if ( new_top > 0 ) { points[3] = new_top }
-				let new_pars = Object.assign(can_draw_selected.pars,{ 'points': points })
-				draw_control.update(new_pars)
+				if ( can_draw_selected.shape === 'rect' ) {
+					let points = can_draw_selected.pars.points
+					let new_left = mouse_x - points[0]
+					if ( new_left > 0 ) { points[2] = new_left }
+					let new_top = mouse_y - points[1]
+					if ( new_top > 0 ) { points[3] = new_top }
+					let new_pars = Object.assign(can_draw_selected.pars,{ 'points': points })
+					draw_control.update(new_pars)
+				} else if ( can_draw_selected.shape === 'ellipse' ) {
+					let points = can_draw_selected.pars.points
+					let new_left = mouse_x - points[0]
+					if ( new_left > 0 ) { points[2] = new_left/2 }
+					let new_top = mouse_y - points[1]
+					if ( new_top > 0 ) { points[3] = new_top/2 }
+					let new_pars = Object.assign(can_draw_selected.pars,{ 'points': points })
+					draw_control.update(new_pars)
+				} else if ( (can_draw_selected.shape === 'polygon') || (can_draw_selected.shape === 'star') ) {
+					let points = can_draw_selected.pars.points
+					let new_left = mouse_x - points[0]
+					let new_top = mouse_y - points[1]
+					if ( new_left > 0 ) { points[2] = Math.sqrt(new_left*new_left + new_top*new_top) }
+					let new_pars = Object.assign(can_draw_selected.pars,{ 'points': points })
+					draw_control.update(new_pars)
+				} else if ( can_draw_selected.shape === 'line' ) { 
+					let points = can_draw_selected.pars.points
+					points[2] = mouse_x
+					points[3] = mouse_y
+					let new_pars = Object.assign(can_draw_selected.pars,{ 'points': points })
+					draw_control.update(new_pars)
+				}
 			}
 		}
 	}
@@ -169,6 +206,97 @@
 				if ( ychange ) points[3] = select_height
 				let new_pars = Object.assign(can_draw_selected.pars,{ 'points': points })
 				draw_control.update(new_pars)
+			} else if ( can_draw_selected.shape === 'line' ) {
+				let points = can_draw_selected.pars.points
+				if ( diff_source ) {
+					if ( diff_source === handle_box_tl) {
+						if ( xchange ) points[0] += dx
+						if ( ychange ) points[1] += dy
+					} else if ( diff_source === handle_box_top) {
+						if ( ychange ) points[1] += dy
+					} else if ( diff_source === handle_box_bl) {
+						if ( xchange ) points[0] += dx
+					} else if ( diff_source === handle_box_left) {
+						if ( xchange ) points[0] += dx
+					} else if ( diff_source === handle_box_tr) {
+						if ( ychange ) points[1] += dy
+					}
+					/*
+					else if ( diff_source === handle_box_bottom) {
+					} else if ( diff_source === handle_box_right) {
+					} else if ( diff_source === handle_box_br) {
+					}
+					*/
+
+				} else {
+					points[0] += dx
+					points[1] += dy
+				}
+				if ( xchange ) points[2] = points[0] + select_width
+				if ( ychange ) points[3] = points[1] + select_height
+				let new_pars = Object.assign(can_draw_selected.pars,{ 'points': points })
+				draw_control.update(new_pars)
+			} else {
+				if ( diff_source ) {
+					let points = can_draw_selected.pars.points
+					if ( diff_source === handle_box_tl) {
+						if ( xchange ) points[0] += dx/2
+						if ( ychange ) points[1] += dy/2
+					} else if ( diff_source === handle_box_top) {
+						if ( ychange ) points[1] += dy/2
+					} else if ( diff_source === handle_box_bl) {
+						if ( xchange ) points[0] += dx/2
+						if ( ychange ) points[1] += dy/2
+					} else if ( diff_source === handle_box_left) {
+						if ( xchange ) points[0] += dx/2
+						if ( ychange ) points[1] += dy/2
+					} else if ( diff_source === handle_box_tr) {
+						if ( xchange ) points[0] += dx/2
+						if ( ychange ) points[1] += dy/2
+					} else if ( diff_source === handle_box_bottom) {
+						if ( ychange ) points[1] += dy/2
+					} else if ( diff_source === handle_box_right) {
+						if ( xchange ) points[0] += dx/2
+					} else if ( diff_source === handle_box_br) {
+						if ( xchange ) points[0] += dx/2
+						if ( ychange ) points[1] += dy/2
+					}
+
+					switch ( can_draw_selected.shape ) {
+						case 'ellipse' : {
+							if ( xchange ) points[2] = select_width/2
+							if ( ychange ) points[3] = select_height/2
+							break;
+						}
+						case 'star' : {
+							if ( xchange|| ychange ) {
+								let sw = select_width/2
+								let sh = select_height/2
+								points[2] = Math.sqrt(sw*sw + sh*sh)
+							}
+							break;
+						}
+						case 'polygon' : {
+							if ( xchange|| ychange ) {
+								let sw = select_width
+								let sh = select_height
+								points[2] = select_width
+							}
+							break;
+						}
+						default: {
+							break;
+						}
+					}
+					let new_pars = Object.assign(can_draw_selected.pars,{ 'points': points })
+					draw_control.update(new_pars)
+				} else {
+					let points = can_draw_selected.pars.points
+					points[0] += dx
+					points[1] += dy
+					let new_pars = Object.assign(can_draw_selected.pars,{ 'points': points })
+					draw_control.update(new_pars)
+				}
 			}
 		}
 	}
@@ -201,9 +329,11 @@
 
 	function set_selection_controls(sel) {
 		if ( sel ) {
+			selection_active = true && (shape_index !== false) && (shape_index >= 0)
 			set_select_bounds()
 			selection_positions()
 		} else {
+			selection_active = false
 			select_left = 0
 			select_top = 0
 			select_width = 0
@@ -264,6 +394,13 @@
 		return false
 	}
 
+	function is_line(a_shape) {
+		if ( a_shape === "line" ) {
+			return true
+		}  // maybe for other line types as well
+		return false
+	}
+
 
 	function start_tracking(evt) {
 		if ( tool === 'rect'  ) {
@@ -276,18 +413,31 @@
 			selection_on = false
 			set_selection_controls(false)
 			drawing = true
+			tool_parameters.parameters.points = [mouse_x,mouse_y,2,2]
 			draw_control.add(tool_parameters.shape,tool_parameters.parameters)
 			draw_control.command("select_top")
 			//
+		} else if ( is_line(shape) ) {
+			selection_on = false
+			set_selection_controls(false)
+			drawing = true
+			tool_parameters.parameters.points = [mouse_x,mouse_y,mouse_x+2,mouse_y+2]
+			draw_control.add(tool_parameters.shape,tool_parameters.parameters)
+			draw_control.command("select_top")
 		} else if ( tool === 'select' ) {
 			selection_on = !selection_on
 			//
+			let prev_shape_index = shape_index
 			draw_control.searching({ "mouse_loc" : [canvas_mouse.x/magnification,canvas_mouse.y/magnification] })
+			selection_changed = (prev_shape_index !== shape_index)
 			if ( (shape_index !== false) && (shape_index >= 0) ) {
 				draw_control.command("select",{"select" : shape_index})
+				//
 				if ( shape_index >= 0 ) {
 					selection_on = true
 				}
+			} else {
+				draw_control.command("deselect",{"select" : prev_shape_index})
 			}
 			//
 			if ( (shape_index !== false) && (shape_index >= 0) ) {

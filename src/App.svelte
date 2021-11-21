@@ -5,7 +5,7 @@
 	import { popup_size } from '../utils/display-utils.js'
 	import Ruler from './ruler.svelte'
 	import Modal from './modal.svelte'
-	import { onMount } from 'svelte';
+	import { onMount,tick } from 'svelte';
 
 	import ManageProject from './dialogs/project-manage.svelte'
 	import OpenProject from './dialogs/project-open.svelte'
@@ -97,6 +97,9 @@
 	let g_regular_shape = false
 
 
+	let g_current_selection_object = false
+
+
 	let magnification = 100
 	let calc_magnification = magnification/100.0
 	let magnifications = [
@@ -133,7 +136,8 @@
 		'magnification' : 1.0,
 		'ruler_interval' : 50,
 		'tool' : "select",
-		'tool_parameters' : g_current_parameters
+		'tool_parameters' : g_current_parameters,
+		'shape' : 'rect'
 	}
 
 
@@ -181,8 +185,11 @@
 	}
 
 	let selection_mode = true
+	let free_mode = false
+	let g_free_mode = false
 	let tool_cursor = "default"
 	let g_current_tool = "select"
+	let g_current_shape = "rect"
 
 	$: edit_props = {
 		'width' : g_calc_doc_width,
@@ -196,9 +203,24 @@
 		'magnification' : calc_magnification,
 		'ruler_interval' : INTERVAL_ruler,
 		'tool' : g_current_tool,
-		'tool_parameters' : g_current_parameters
+		'tool_parameters' : g_current_parameters,
+		'shape' : g_current_shape
 	}
 
+
+	let g_selection_changed = false
+	async function reset_free_mode() {
+		await tick()
+		free_mode = true
+	}
+	$: {
+		free_mode = false
+		if (( g_current_selection_object !== false ) && g_selection_changed ) {
+			g_current_shape = g_current_selection_object.shape
+			set_selection_mode(g_current_tool)
+			reset_free_mode()
+		}
+	}
 
 	let rect_selected = true
 	let text_selected = false
@@ -225,7 +247,9 @@
 	//
 	let mode_toggle = 'select'
 	let g_selector = false
-	$: g_selector = (mode_toggle !== 'select')
+	$: g_selector = (mode_toggle !== 'select') || ( g_current_selection_object !== false )
+	$: g_free_mode = free_mode
+
 
 	function set_selection_mode(mode_name) {
 		rect_selected = false
@@ -246,9 +270,11 @@
 		//
 		mode_toggle = mode_name
 		g_current_tool = mode_name
+		g_current_shape = tool_to_shape(g_current_tool)
 		switch ( mode_name ) {
 			case 'select': {
 				selection_mode = false
+				g_current_shape = ( g_current_selection_object ) ? g_current_selection_object.shape : false
 				tool_cursor = "default"
 				break
 			}
@@ -438,6 +464,7 @@
 	let circle_names = ["cx", "cy", "r"]
 	let ellipse_names = ["cx", "cy", "rx", "ry"]
 	let line_names = ["x1", "y1", "x2", "y2"]
+	let connector_names = ["x1", "y1", "x2", "y2"]
 	let path_names = ["x", "y"]
 	let polygon_names = ["x", "y", "r"]
 	let star_names = ["x", "y", "r", "points", "pointiness", "radial-shift"]
@@ -449,8 +476,29 @@
 	let bezier_names = ["x1", "y1", "x2", "y2", ]
 	let quadratic_names = ["x1", "y1", "x2", "y2" ]
 
+	let free_mode_vars = {
+		"rect" : rect_names,
+		"ellipse" : ellipse_names,
+		"polygon" : polygon_names,
+		"line" : line_names,
+		"star" : star_names,
+		"text" : text_names,
+		"component" : component_names,
+		"path" : path_names,
+		"bezier" : curve_names,
+		"quadratic" : quadratic_names
+	}
+
 	function selection_mode_var(var_name) {
 		if ( selection_mode && (var_name == "rotate") ) return true
+
+
+		if ( free_mode ) {
+			console.log("selection_mode_var " + g_current_shape)
+			if ( free_mode_vars[g_current_shape] ) {
+				if ( free_mode_vars[g_current_shape].indexOf(var_name) >= 0 ) return true
+			}
+		}
 
 		if ( circle_selected && circle_names.indexOf(var_name) >= 0 ) {
 			return true
@@ -459,6 +507,9 @@
 			return true
 		}
 		if ( line_selected && line_names.indexOf(var_name) >= 0 ) {
+			return true
+		}
+		if ( connector_selected && connector_names.indexOf(var_name) >= 0 ) {
 			return true
 		}
 		if ( rect_selected && rect_names.indexOf(var_name) >= 0 ) {
@@ -488,7 +539,6 @@
 		if ( component_selected  && component_names.indexOf(var_name) >= 0 ) {
 			return true
 		}
-
 		return false
 	}
 
@@ -522,6 +572,9 @@
 						return "quadratic"
 					}
 				}
+			}
+			case "connector": {
+				return "line"
 			}
 			case "path": {
 				if ( g_regular_shape ) {
@@ -613,11 +666,11 @@
 				break;
 			}
 			case "bezier" : {
-				pars.control_points = [object_cp1.x,object_cp1.y,object_cp2.x,object_cp2.y]
+				parameters.control_points = [object_cp1.x,object_cp1.y,object_cp2.x,object_cp2.y]
 				break;
 			}
 			case "quadratic" : {
-				pars.control_points = [object_cp1.x,object_cp1.y]
+				parameters.control_points = [object_cp1.x,object_cp1.y]
 				break;
 			}
 			case "text" : {
@@ -643,22 +696,25 @@
 
 	$: {
 		let shape = tool_to_shape(g_current_tool)
-		let points_array = shape_to_points_array(shape)
-		let rotation = undefined
-		if ( Math.abs(object_rotate) > 0.0005 ) {
-			rotation = object_rotate
-		}
-		g_current_parameters = {
-			"shape" : shape,
-			"parameters" : {
-				"thick" : 2, 
-				"line" : "black", 
-				"fill" : "rgba(100,200,220,0.9)", 
-				"points" : points_array,
-				"rotate" : rotation
+		if ( shape !== 'select' ) {
+			let points_array = shape_to_points_array(shape)
+			let rotation = undefined
+			if ( Math.abs(object_rotate) > 0.0005 ) {
+				rotation = object_rotate
 			}
+			g_current_parameters = {
+				"shape" : shape,
+				"tool"  : g_current_tool,
+				"parameters" : {
+					"thick" : 2, 
+					"line" : "black", 
+					"fill" : "rgba(100,200,220,0.9)", 
+					"points" : points_array,
+					"rotate" : rotation
+				}
+			}
+			add_shape_extras(shape,g_current_parameters.parameters)
 		}
-		add_shape_extras(shape,g_current_parameters.parameters)
 	}
 
 	//
@@ -914,62 +970,62 @@
 	</div>
 	<span style="color:white">|</span>
 
-	{#if selection_mode }
+	{#if (selection_mode || g_free_mode) }
 		<span class="top-text" >id:</span><input type=text  class="bottom-input"  bind:value={id_selected} />
 		<span class="top-text" >class:</span><input type=text  class="bottom-input" bind:value={class_selected} />
 	{/if}
 
 	<span style="color:white">|</span>
 
-	{#if selection_mode && selection_mode_var('rotate') }
+	{#if (selection_mode || g_free_mode) && selection_mode_var('rotate') }
 		<div class="bottom-menu-button" >
 			<img class="bottom-menu-item"  src="./images/angle.svg" alt="undo" title="undo" />
 		</div>
 		<input type=number  class="top-input"  bind:value={object_rotate} />
 	{/if}
 
-	{#if g_selector && selection_mode_var('x') }
+	{#if (g_selector || g_free_mode) && selection_mode_var('x') }
 		<span class="top-text" >x:</span><input type=number  class="top-input"  bind:value={object_x} />
 	{/if}
-	{#if g_selector && selection_mode_var('y') }
+	{#if (g_selector || g_free_mode) && selection_mode_var('y') }
 		<span class="top-text" >y:</span><input type=number  class="top-input"  bind:value={object_y} />
 	{/if}
 
-	{#if g_selector && selection_mode_var('w') }
+	{#if (g_selector || g_free_mode) && selection_mode_var('w') }
 		<span class="top-text" >h:</span><input type=number  class="top-input"  bind:value={object_width} />
 	{/if}
-	{#if g_selector && selection_mode_var('h') }
+	{#if (g_selector || g_free_mode) && selection_mode_var('h') }
 		<span class="top-text" >w:</span><input type=number  class="top-input"  bind:value={object_height} />
 	{/if}
 
 	<!-- lines -->
-	{#if g_selector && selection_mode_var('x1') }
+	{#if (g_selector || g_free_mode) && selection_mode_var('x1') }
 		<span class="top-text" >x1:</span><input type=number  class="top-input"  bind:value={object_x1} />
 	{/if}
-	{#if g_selector && selection_mode_var('y1') }
+	{#if (g_selector || free_mode) && selection_mode_var('y1') }
 		<span class="top-text" >y1:</span><input type=number  class="top-input"  bind:value={object_y1} />
 	{/if}
-	{#if g_selector && selection_mode_var('x2') }
+	{#if (g_selector || g_free_mode) && selection_mode_var('x2') }
 		<span class="top-text" >x2:</span><input type=number  class="top-input"  bind:value={object_x2} />
 	{/if}
-	{#if g_selector && selection_mode_var('y2') }
+	{#if (g_selector || g_free_mode) && selection_mode_var('y2') }
 		<span class="top-text" >y2:</span><input type=number  class="top-input"  bind:value={object_y2} />
 	{/if}
 	
 	<!-- circles -->
-	{#if g_selector && selection_mode_var('cx') }
+	{#if (g_selector || g_free_mode) && selection_mode_var('cx') }
 		<span class="top-text" >cx:</span><input type=number  class="top-input"  bind:value={object_cx} />
 	{/if}
-	{#if g_selector && selection_mode_var('cy') }
+	{#if (g_selector || g_free_mode) && selection_mode_var('cy') }
 		<span class="top-text" >cy:</span><input type=number  class="top-input"  bind:value={object_cy} />
 	{/if}
-	{#if g_selector && selection_mode_var('r') }
+	{#if (g_selector || g_free_mode) && selection_mode_var('r') }
 		<span class="top-text" >R:</span><input type=number  class="top-input"  bind:value={object_r} />
 	{/if}
-	{#if g_selector && selection_mode_var('rx') }
+	{#if (g_selector || g_free_mode) && selection_mode_var('rx') }
 		<span class="top-text" >rx:</span><input type=number  class="top-input"  bind:value={object_rx} />
 	{/if}
-	{#if g_selector && selection_mode_var('ry') }
+	{#if (g_selector || g_free_mode) && selection_mode_var('ry') }
 		<span class="top-text" >ry:</span><input type=number  class="top-input"  bind:value={object_ry} />
 	{/if}
 
@@ -1147,7 +1203,7 @@
 		<canvas class="main-canvas" bind:this={g_canvas_element} width={g_calc_doc_width} height={g_calc_doc_height} style="width:{g_calc_doc_width}px;height:{g_calc_doc_height}px;left:{g_doc_left}px;top:{g_doc_top}px"  >
 	
 		</canvas>
-		<CanEdit {...edit_props} />
+		<CanEdit {...edit_props} bind:selected_objects={g_current_selection_object} bind:selection_changed={g_selection_changed}/>
 
 	
 		<Ruler disposition="horizontal" {ruler_top} {ruler_magnification} zero_tick={h_zero_tick} ruler_interval={INTERVAL_ruler}/>
