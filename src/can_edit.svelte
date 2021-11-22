@@ -2,6 +2,7 @@
 import { tick } from "svelte";
 
     import CanDraw from "svelte-can-draw"
+	import {g_commander} from './edit_commands'
 
     export let height = 460
     export let width = 680
@@ -47,6 +48,55 @@ import { tick } from "svelte";
 	let canvas_changed = false
 
     let set_drawing = CanDraw.draw_model.set_drawing
+
+
+
+    g_commander.subscribe(async (command) => {
+
+        //
+        let cmd_pars = command.pars
+		if ( command.command !== undefined  ) {
+            let cmd = command.command
+			//
+			let target = can_draw_selected
+			//
+			if ( target  ) {
+				switch ( cmd ) {
+					case "clone" : {
+						let c_shape = can_draw_selected.shape
+						let c_pars = JSON.parse(JSON.stringify(can_draw_selected.pars))
+						let dx = cmd_pars.offset_x
+						let dy = cmd_pars.offset_y
+						c_pars.points[0] += dx
+						c_pars.points[1] += dy
+						select_left += dx
+						select_top += dy
+						//
+						draw_control.add(c_shape,c_pars)
+						await tick()
+						draw_control.command("select_top")
+						await tick()
+						canvas_changed = true
+						break;
+					}
+					case "delete" : {
+						draw_control.command("remove_seleted")
+						await tick()
+						set_selection_controls(false)
+						break;
+					}
+					case "to_top" : {
+						draw_control.command("send_top",{ "select" : false })
+						break;
+					}
+					case "to_bottom" : {
+						draw_control.command("send_bottom",{ "select" : false })
+						break;
+					}
+				}
+			}
+        }
+    })
 
 
 	let selection_active = false
@@ -184,7 +234,7 @@ import { tick } from "svelte";
 		select_height = prev_select_height
 	}
 
-	function update_selected_object(dx,dy,xchange,ychange,diff_source) {
+	async function update_selected_object(dx,dy,xchange,ychange,diff_source) {
 		if ( can_draw_selected ) {
 			if ( can_draw_selected.shape === 'rect' ) {
 				let points = can_draw_selected.pars.points
@@ -295,19 +345,22 @@ import { tick } from "svelte";
 						if ( ychange ) points[1] += dy/2
 					} else if ( diff_source === handle_box_top) {
 						if ( ychange ) points[1] += dy/2
+						dx = 0
 					} else if ( diff_source === handle_box_bl) {
 						if ( xchange ) points[0] += dx/2
 						if ( ychange ) points[1] += dy/2
 					} else if ( diff_source === handle_box_left) {
 						if ( xchange ) points[0] += dx/2
-						if ( ychange ) points[1] += dy/2
+						dy = 0
 					} else if ( diff_source === handle_box_tr) {
 						if ( xchange ) points[0] += dx/2
 						if ( ychange ) points[1] += dy/2
 					} else if ( diff_source === handle_box_bottom) {
 						if ( ychange ) points[1] += dy/2
+						dx = 0
 					} else if ( diff_source === handle_box_right) {
 						if ( xchange ) points[0] += dx/2
+						dy = 0
 					} else if ( diff_source === handle_box_br) {
 						if ( xchange ) points[0] += dx/2
 						if ( ychange ) points[1] += dy/2
@@ -321,17 +374,19 @@ import { tick } from "svelte";
 						}
 						case 'star' : {
 							if ( xchange|| ychange ) {
-								let sw = select_width/2
-								let sh = select_height/2
+								let sw = dx/2
+								let sh = dy/2
 								points[2] = Math.sqrt(sw*sw + sh*sh)
 							}
 							break;
 						}
 						case 'polygon' : {
 							if ( xchange|| ychange ) {
-								let sw = select_width
-								let sh = select_height
-								points[2] = select_width
+								let sw = dx
+								let sh = dy
+								let area_prior = can_draw_selected.bounds[2]*can_draw_selected.bounds[3]
+								let sign = (select_width*select_height < area_prior) ? -1 : 1
+								points[2] += sign*Math.sqrt(sw*sw + sh*sh)
 							}
 							break;
 						}
@@ -354,7 +409,7 @@ import { tick } from "svelte";
 
 
 	let text_box_style  = "visibility:hidden;display:none;left:0px;top:0px"
-	let text_box_field = "" 
+	let text_box_field = false
 	let text_box_field_style = "visibility:inherit;width:inherit;heightinherit"
 	let text_box = false
 	let text_value = ""
@@ -363,13 +418,20 @@ import { tick } from "svelte";
 		"x" : 0,
 		"y" : 0
 	}
-	function position_text_box(x,y) {
+	async function position_text_box(x,y) {
 		if ( text_box ) {
 			text_loc.x = x
 			text_loc.y = y
 			text_box_style = `visibility:visibleiv;display:block;left:${x + doc_left}px;top:${y + doc_top}px`
 			text_value = ""
 			text_initialized = false
+			await tick()
+			if ( text_box_field ) {
+				text_box_field.focus()
+				text_box_field.click()
+				await tick()
+				setTimeout(function () { text_box_field.focus(); }, 1);
+			}
 		}
 	}
 
@@ -529,8 +591,10 @@ import { tick } from "svelte";
 	}
 
 
-	function start_tracking(evt) {
+	async function start_tracking(evt) {
 		turn_off_text()
+		draw_control.command("deselect")
+		await tick()
 		if ( tool === 'rect'  ) {
 			selection_on = false
 			set_selection_controls(false)
@@ -540,7 +604,7 @@ import { tick } from "svelte";
 		} else if ( is_text(tool) ) {
 			selection_on = false
 			set_selection_controls(false)
-			drawing = true
+			drawing = false
 			tool_parameters.parameters.points = [mouse_x,mouse_y]
 			position_text_box(mouse_x,mouse_y)
 		} else if ( is_shape(tool) && ( tool_parameters !== false ) ) {

@@ -20,7 +20,8 @@
 	import {db_startup, db_store} from '../utils/db-utils'
 
 	import CanEdit from './can_edit.svelte'
-    
+	import { commander } from './edit_commands'
+
 	// https://github.com/agrinko/js-undo-manager
 	// https://github.com/dnass/svelte-canvas
 
@@ -466,7 +467,7 @@
 	let line_names = ["x1", "y1", "x2", "y2"]
 	let connector_names = ["x1", "y1", "x2", "y2"]
 	let path_names = ["x", "y"]
-	let polygon_names = ["x", "y", "r"]
+	let polygon_names = ["x", "y", "r", "sides"]
 	let star_names = ["x", "y", "r", "points", "pointiness", "radial-shift"]
 	let component_names = ["x", "y"]
 	let group_names = ["x", "y", "group", "relative", "align-left", "align-center", "align-right", "align-top", "align-middle", "align-bottom"]
@@ -490,8 +491,8 @@
 	}
 
 	function selection_mode_var(var_name) {
-		if ( (selection_mode || free_mode) && (var_name == "rotate") ) return true
-
+		//
+		if ( (selection_mode || free_mode || g_current_shape) && (var_name == "rotate") ) return true
 
 		if ( free_mode ) {
 			//console.log("selection_mode_var " + g_current_shape)
@@ -717,6 +718,11 @@
 		}
 	}
 
+	async function parameter_change(parameter_name,cpname) {
+		g_current_parameters.parameters[cpname] = g_generalized_parameters[parameter_name]
+		await tick()
+	}
+
 	//
 	let show_hide_grid = "Show"
 	let show_hide_wireframe = "Show"
@@ -901,6 +907,22 @@
 		
 	}
 
+	function do_clone_selected(ev) {
+		commander.command("clone",{ "offset_x" : 10, "offset_y" : 10})
+	}
+
+	function do_remove_selected(ev) {
+		commander.command("delete",{})
+	}
+
+	function do_move_top_selected(ev) {
+		commander.command("to_top",{})
+	}
+
+	function do_move_bottom_selected(ev) {
+		commander.command("to_bottom",{})
+	}
+
 
 </script>
 
@@ -952,17 +974,17 @@
 		<img class="v-left-menu-item"  src="./images/redo.svg" alt="redo" title="redo" />
 	</div>
 	<span style="color:white">|</span>
-	<div class="bottom-menu-button" >
+	<div class="bottom-menu-button" on:click={do_clone_selected} >
 		<img class="v-left-menu-item"  src="./images/clone.svg" alt="clone" title="clone" />
 	</div>
-	<div class="bottom-menu-button" >
+	<div class="bottom-menu-button" on:click={do_remove_selected} >
 		<img class="v-left-menu-item"  src="./images/delete.svg" alt="delete" title="delete" />
 	</div>
 	<span style="color:white">|</span>
-	<div class="bottom-menu-button" >
+	<div class="bottom-menu-button" on:click={do_move_top_selected} >
 		<img class="v-left-menu-item"  src="./images/move_top.svg" alt="move front" title="move to front" />
 	</div>
-	<div class="bottom-menu-button" >
+	<div class="bottom-menu-button" on:click={do_move_bottom_selected} >
 		<img class="v-left-menu-item"  src="./images/move_bottom.svg" alt="move back" title="move to back" />
 	</div>
 	<div class="bottom-menu-button" >
@@ -1029,19 +1051,19 @@
 		<span class="top-text" >ry:</span><input type=number  class="top-input"  bind:value={object_ry} />
 	{/if}
 
-	{#if g_selector && selection_mode_var('group') }
+	{#if (g_selector || g_free_mode) && selection_mode_var('group') }
 		<div class="bottom-menu-button" >
 			<img class="v-left-menu-item"  src="./images/group_elements.svg" alt="form group" title="form group" />
 		</div>
 	{/if}
 
-	{#if g_selector && selection_mode_var('ungroup') }
+	{#if (g_selector || g_free_mode) && selection_mode_var('ungroup') }
 		<div class="bottom-menu-button" >
 			<img class="v-left-menu-item"  src="./images/ungroup.svg" alt="ungroup" title="ungroup" />
 		</div>
 	{/if}
 
-	{#if g_selector && selection_mode_var('relative') }
+	{#if (g_selector || g_free_mode) && selection_mode_var('relative') }
 		<span class="top-text" >font:</span>
 		<div class="bottom-menu-button" style="vertical-align:bottom">
 			<select bind:value={grouping_reference} style="height:25px;font-size:70%" >
@@ -1054,24 +1076,24 @@
 		</div>
 	{/if}
 
-	{#if g_selector && selection_mode_var('corner') }
+	{#if (g_selector || g_free_mode) && selection_mode_var('corner') }
 		<div class="bottom-menu-button" >
 			<img class="bottom-menu-item"  src="./images/c_radius.svg" alt="undo" title="undo" />
 		</div>
 		<input type=number  class="top-input"  bind:value={object_corner} />
 	{/if}
 
-	{#if g_selector && selection_mode_var('bold') }
+	{#if (g_selector || g_free_mode) && selection_mode_var('bold') }
 		<div class="bottom-menu-button" >
 			<img class="bottom-menu-item"  src="./images/bold.svg" alt="bold" title="bold" />
 		</div>
 	{/if}
-	{#if g_selector && selection_mode_var('italic') }
+	{#if (g_selector || g_free_mode) && selection_mode_var('italic') }
 		<div class="bottom-menu-button" >
 			<img class="bottom-menu-item"  src="./images/italic.svg" alt="italic" title="italic" />
 		</div>
 	{/if}
-	{#if g_selector && selection_mode_var('font') }
+	{#if (g_selector || g_free_mode) && selection_mode_var('font') }
 		<span class="top-text" >font:</span>
 		<div class="bottom-menu-button" style="vertical-align:bottom">
 			<select bind:value={object_text_font} style="height:25px;font-size:70%" >
@@ -1083,39 +1105,39 @@
 			</select>
 		</div>
 	{/if}
-	{#if g_selector && selection_mode_var('align-left') }
+	{#if (g_selector || g_free_mode) && selection_mode_var('align-left') }
 		<div class="bottom-menu-button" >
 			<img class="v-left-menu-item"  src="./images/align_left.svg" alt="align left" title="align left" />
 		</div>
 	{/if}
-	{#if g_selector && selection_mode_var('align-center') }
+	{#if (g_selector || g_free_mode) && selection_mode_var('align-center') }
 		<div class="bottom-menu-button" >
 			<img class="v-left-menu-item"  src="./images/align_center.svg" alt="align center" title="align center" />
 		</div>
 	{/if}
-	{#if g_selector && selection_mode_var('align-right') }
+	{#if (g_selector || g_free_mode) && selection_mode_var('align-right') }
 		<div class="bottom-menu-button" >
 			<img class="v-left-menu-item"  src="./images/align_right.svg" alt="align right" title="align right" />
 		</div>
 	{/if}
 
-	{#if g_selector && selection_mode_var('align-top') }
+	{#if (g_selector || g_free_mode) && selection_mode_var('align-top') }
 		<div class="bottom-menu-button" >
 			<img class="v-left-menu-item"  src="./images/align_top.svg" alt="align top" title="align top" />
 		</div>
 	{/if}
-	{#if g_selector && selection_mode_var('align-middle') }
+	{#if (g_selector || g_free_mode) && selection_mode_var('align-middle') }
 		<div class="bottom-menu-button" >
 			<img class="v-left-menu-item"  src="./images/align_middle.svg" alt="align middle" title="align middle" />
 		</div>
 	{/if}
-	{#if g_selector && selection_mode_var('align-bottom') }
+	{#if (g_selector || g_free_mode) && selection_mode_var('align-bottom') }
 		<div class="bottom-menu-button" >
 			<img class="v-left-menu-item"  src="./images/align_bottom.svg" alt="align bottom" title="align bottom" />
 		</div>
 	{/if}
 
-	{#if g_selector && selection_mode_var('curve') }
+	{#if (g_selector || g_free_mode) && selection_mode_var('curve') }
 		<span class="top-text" >font:</span>
 		<div class="bottom-menu-button" style="vertical-align:bottom">
 			<select bind:value={path_segment_style} style="height:25px;font-size:70%" >
@@ -1127,37 +1149,37 @@
 			</select>
 		</div>
 	{/if}
-	{#if g_selector && selection_mode_var('clone-node') }
+	{#if (g_selector || g_free_mode) && selection_mode_var('clone-node') }
 		<div class="bottom-menu-button" >
 			<img class="v-left-menu-item"  src="./images/node_clone.svg" alt="clone node" title="clone node" />
 		</div>
 	{/if}
-	{#if g_selector && selection_mode_var('delete-node') }
+	{#if (g_selector || g_free_mode) && selection_mode_var('delete-node') }
 		<div class="bottom-menu-button" >
 			<img class="v-left-menu-item"  src="./images/node_delete.svg" alt="delete node" title="delete node" />
 		</div>
 	{/if}
-	{#if g_selector && selection_mode_var('subpath') }
+	{#if (g_selector || g_free_mode) && selection_mode_var('subpath') }
 		<div class="bottom-menu-button" >
 			<img class="v-left-menu-item"  src="./images/path.svg" alt="open/close subpath" title="open/close subpath" />
 		</div>
 	{/if}
-	{#if g_selector && selection_mode_var('add-subpath') }
+	{#if (g_selector || g_free_mode) && selection_mode_var('add-subpath') }
 		<div class="bottom-menu-button" >
 			<img class="v-left-menu-item"  src="./images/tool_add_subpath.svg" alt="add subpath" title="add subpath" />
 		</div>
 	{/if}
 
-	{#if g_selector && selection_mode_var('points') }
+	{#if (g_selector || g_free_mode) && selection_mode_var('points') }
 		<span class="top-text" >points:</span><input type=number  class="top-input"  bind:value={object_points} />
 	{/if}
-	{#if g_selector && selection_mode_var('sides') }
-		<span class="top-text" >sides:</span><input type=number  class="top-input"  bind:value={object_sides} />
+	{#if (g_selector || g_free_mode) && selection_mode_var('sides') }
+		<span class="top-text" >sides:</span><input type=number  class="top-input"  bind:value={object_sides} on:change={(ev) => { parameter_change("object_sides","sides") }} />
 	{/if}
-	{#if g_selector && selection_mode_var('pointiness') }
+	{#if (g_selector || g_free_mode) && selection_mode_var('pointiness') }
 		<span class="top-text" >pointiness:</span><input type=number  class="top-input"  bind:value={object_pointiness} />
 	{/if}
-	{#if g_selector && selection_mode_var('radial-shift') }
+	{#if (g_selector || g_free_mode) && selection_mode_var('radial-shift') }
 		<span class="top-text" >radial shift:</span><input type=number  class="top-input"  bind:value={object_radial_shift} />
 	{/if}
 
