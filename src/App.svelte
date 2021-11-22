@@ -490,7 +490,7 @@
 	}
 
 	function selection_mode_var(var_name) {
-		if ( selection_mode && (var_name == "rotate") ) return true
+		if ( (selection_mode || free_mode) && (var_name == "rotate") ) return true
 
 
 		if ( free_mode ) {
@@ -1240,7 +1240,7 @@
 	</div>
 	<hr>
 	<div class="b-menu-item" on:click={ () => { toggle_float("library-view") } } >
-		<img class="top-menu-item"  src="./images/library.svg" alt="Image Lib" title="Image Library" />
+		<image class="top-menu-item"  src="./images/library.svg" alt="Image Lib" title="Image Library" />
 		<div class="b-menu-item-text" >Image Library</div>
 	</div>
 	<hr>

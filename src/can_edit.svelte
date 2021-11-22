@@ -1,4 +1,6 @@
 <script>
+import { tick } from "svelte";
+
     import CanDraw from "svelte-can-draw"
 
     export let height = 460
@@ -158,7 +160,6 @@
 	let handle_box_right = false
 	let handle_box_br = false
 
-
 	function calc_line_disposition(points) {
 		let ew = 'w'
 		let ns = 's'
@@ -200,13 +201,6 @@
 					} else if ( diff_source === handle_box_tr) {
 						if ( ychange ) points[1] += dy
 					}
-					/*
-					else if ( diff_source === handle_box_bottom) {
-					} else if ( diff_source === handle_box_right) {
-					} else if ( diff_source === handle_box_br) {
-					}
-					*/
-
 				} else {
 					points[0] += dx
 					points[1] += dy
@@ -358,6 +352,77 @@
 		}
 	}
 
+
+	let text_box_style  = "visibility:hidden;display:none;left:0px;top:0px"
+	let text_box_field = "" 
+	let text_box_field_style = "visibility:inherit;width:inherit;heightinherit"
+	let text_box = false
+	let text_value = ""
+	let text_initialized = false
+	let text_loc = {
+		"x" : 0,
+		"y" : 0
+	}
+	function position_text_box(x,y) {
+		if ( text_box ) {
+			text_loc.x = x
+			text_loc.y = y
+			text_box_style = `visibility:visibleiv;display:block;left:${x + doc_left}px;top:${y + doc_top}px`
+			text_value = ""
+			text_initialized = false
+		}
+	}
+
+	function turn_off_text() {
+		text_initialized = false
+		text_complete()
+	}
+
+
+	async function startup_new_text() {
+		draw_control.add("text",{ "thick" : 2, "line" : "black", "fill" : "rgba(220,100,20,0.7)", "points" : [text_loc.x,text_loc.y], 
+									"text" : text_value, "font":  "bold 32px Arial",
+									"textAlign" : "center", "textBaseline" : "middle"
+								})
+		await tick()
+		draw_control.command("select_top")
+		await tick()
+	}
+
+	$: if ( is_text(tool) ) {
+		if ( typeof text_value === 'string'  && text_value.length ) {
+			if ( !text_initialized ) {
+				text_initialized = true
+				startup_new_text()
+			} else {
+				if ( can_draw_selected ) {
+					let new_pars = Object.assign(can_draw_selected.pars,{ 'text': text_value })
+					draw_control.update(new_pars)
+				}
+			}
+		}
+	}
+
+
+
+	/*
+	let [x,y] = pars.points
+            let text = pars.text
+            //
+            ctxt.lineWidth = pars.thick;
+            ctxt.strokeStyle = pars.line;
+            ctxt.font = pars.font;
+            ctxt.textAlign = pars.textAlign;
+            ctxt.textBaseline = pars.textBaseline;
+*/
+
+	function text_complete() {
+		let new_text = text_value
+		text_value = ""
+		text_box_style  = "visibility:hidden;display:none;left:0px;top:0px"
+	}
+
+
 	//
 	function selection_positions() {
 		// mag
@@ -443,6 +508,11 @@
 		}
 	}
 
+
+	function is_text(tool) {
+		return ( tool === "text" )
+	}
+
 	const gc_shape_list = [ 'ellipse', 'circle', 'polygon', 'star' ]
 	function is_shape(tool) {
 		if ( gc_shape_list.indexOf(tool) >= 0 ) {
@@ -460,12 +530,19 @@
 
 
 	function start_tracking(evt) {
+		turn_off_text()
 		if ( tool === 'rect'  ) {
 			selection_on = false
 			set_selection_controls(false)
 			drawing = true
 			draw_control.add("rect",{ "thick" : 2, "line" : "black", "fill" : "rgba(100,200,220,0.9)", "points" : [mouse_x,mouse_y,2,2] })
 			draw_control.command("select_top")
+		} else if ( is_text(tool) ) {
+			selection_on = false
+			set_selection_controls(false)
+			drawing = true
+			tool_parameters.parameters.points = [mouse_x,mouse_y]
+			position_text_box(mouse_x,mouse_y)
 		} else if ( is_shape(tool) && ( tool_parameters !== false ) ) {
 			selection_on = false
 			set_selection_controls(false)
@@ -754,6 +831,9 @@
 	<div bind:this={handle_box_tr} class="handle-box top-right-c" style={handle_top_right_style} on:mousedown|capture|preventDefault|stopPropagation={grab_handle} >&nbsp</div>
 	<div bind:this={handle_box_right} class="handle-box right-c" style={handle_right_style} on:mousedown|capture|preventDefault|stopPropagation={grab_handle} >&nbsp</div>
 	<div bind:this={handle_box_br} class="handle-box bottom-right-c" style={handle_bottom_right_style} on:mousedown|capture|preventDefault|stopPropagation={grab_handle} >&nbsp</div>
+	<div bind:this={text_box} class="text-box" style={text_box_style} >
+		<input bind:this={text_box_field} type="text"  style={text_box_field_style} bind:value={text_value}  />
+	</div>
 </div>
 <style>
 
@@ -782,5 +862,15 @@
 		height: 5px;
 		background-color: black;
 	}
+
+	.text-box {
+		position: absolute;
+		border : solid rgba(228, 227, 227, 0.336) 2px;
+		width: 150px;
+		height: 60px;
+		background-color: rgba(255, 255, 255, 0.267);
+
+	}
+
 
 </style>
