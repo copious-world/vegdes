@@ -494,7 +494,7 @@
 
 
 		if ( free_mode ) {
-			console.log("selection_mode_var " + g_current_shape)
+			//console.log("selection_mode_var " + g_current_shape)
 			if ( free_mode_vars[g_current_shape] ) {
 				if ( free_mode_vars[g_current_shape].indexOf(var_name) >= 0 ) return true
 			}

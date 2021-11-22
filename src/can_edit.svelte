@@ -159,6 +159,15 @@
 	let handle_box_br = false
 
 
+	function calc_line_disposition(points) {
+		let ew = 'w'
+		let ns = 's'
+		let [x1,y1,x2,y2] = points
+		ew = ( x1 >= x2 ) ? 'w' : 'e'
+		ns = ( y1 <= y2 ) ? 's' : 'n'
+		return ( ns + ew )
+	}
+
 	function save_selection_bounds() {
 		prev_select_left = select_left
 		prev_select_top = select_top
@@ -209,31 +218,79 @@
 			} else if ( can_draw_selected.shape === 'line' ) {
 				let points = can_draw_selected.pars.points
 				if ( diff_source ) {
-					if ( diff_source === handle_box_tl) {
-						if ( xchange ) points[0] += dx
-						if ( ychange ) points[1] += dy
-					} else if ( diff_source === handle_box_top) {
-						if ( ychange ) points[1] += dy
-					} else if ( diff_source === handle_box_bl) {
-						if ( xchange ) points[0] += dx
-					} else if ( diff_source === handle_box_left) {
-						if ( xchange ) points[0] += dx
-					} else if ( diff_source === handle_box_tr) {
-						if ( ychange ) points[1] += dy
+					let disposition = can_draw_selected.disposition
+					if ( !disposition ) {
+						disposition = calc_line_disposition(points)
+						can_draw_selected.disposition = disposition
 					}
-					/*
-					else if ( diff_source === handle_box_bottom) {
-					} else if ( diff_source === handle_box_right) {
-					} else if ( diff_source === handle_box_br) {
+					switch ( disposition ) {
+						case 'se' : 
+						case 'nw' : {
+							let indexes = [0,1,2,3]
+							if ( disposition == 'nw' ) {
+								indexes = [2,3,0,1]
+							}
+							if ( diff_source === handle_box_tl) {
+								if ( xchange ) points[indexes[0]] += dx
+								if ( ychange ) points[indexes[1]] += dy
+							} else if ( diff_source === handle_box_top ) {
+								if ( ychange ) points[indexes[1]] += dy
+							} else if ( diff_source === handle_box_bl ) {
+								if ( xchange ) points[indexes[0]] += dx
+								if ( ychange ) points[indexes[3]] += dy
+							} else if ( diff_source === handle_box_left) {
+								if ( xchange ) points[indexes[0]] += dx
+							} else if ( diff_source === handle_box_tr) {
+								if ( ychange ) points[indexes[1]] += dy
+								if ( xchange ) points[indexes[2]] += dx
+							} else if ( diff_source === handle_box_bottom) {
+								if ( ychange ) points[indexes[3]] += dy
+							} else if ( diff_source === handle_box_right) {
+								if ( xchange ) points[indexes[2]] += dx
+							} else if ( diff_source === handle_box_br) {
+								if ( xchange ) points[indexes[2]] += dx
+								if ( ychange ) points[indexes[3]] += dy
+							}
+							break
+						}
+						case 'sw' :
+						case 'ne' : {
+							let indexes = [0,1,2,3]
+							if ( disposition == 'ne' ) {
+								indexes = [2,3,0,1]
+							}
+							if ( diff_source === handle_box_tr) {
+								if ( xchange ) points[indexes[0]] += dx
+								if ( ychange ) points[indexes[1]] += dy
+							} else if ( diff_source === handle_box_top ) {
+								if ( ychange ) points[indexes[1]] += dy
+							} else if ( diff_source === handle_box_br ) {
+								if ( xchange ) points[indexes[0]] += dx
+								if ( ychange ) points[indexes[3]] += dy
+							} else if ( diff_source === handle_box_left ) {
+								if ( xchange ) points[indexes[2]] += dx
+							} else if ( diff_source === handle_box_bl ) {
+								if ( xchange ) points[indexes[2]] += dx
+								if ( ychange ) points[indexes[3]] += dy
+							} else if ( diff_source === handle_box_bottom ) {
+								if ( ychange ) points[indexes[3]] += dy
+							} else if ( diff_source === handle_box_right ) {
+								if ( xchange ) points[indexes[0]] += dx
+							} else if ( diff_source === handle_box_tl ) {
+								if ( xchange ) points[indexes[2]] += dx
+								if ( ychange ) points[indexes[1]] += dy
+							}
+							break
+						}
 					}
-					*/
-
+					//
 				} else {
 					points[0] += dx
 					points[1] += dy
+					points[2] += dx
+					points[3] += dy
 				}
-				if ( xchange ) points[2] = points[0] + select_width
-				if ( ychange ) points[3] = points[1] + select_height
+
 				let new_pars = Object.assign(can_draw_selected.pars,{ 'points': points })
 				draw_control.update(new_pars)
 			} else {
@@ -417,7 +474,7 @@
 			draw_control.add(tool_parameters.shape,tool_parameters.parameters)
 			draw_control.command("select_top")
 			//
-		} else if ( is_line(shape) ) {
+		} else if ( !( tool === 'select' ) && is_line(shape) ) {
 			selection_on = false
 			set_selection_controls(false)
 			drawing = true
