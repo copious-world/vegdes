@@ -50,6 +50,11 @@ import { tick } from "svelte";
     let set_drawing = CanDraw.draw_model.set_drawing
 
 
+	function object_clone(obj) {
+		let new_obj = JSON.parse(JSON.stringify(obj))
+		return new_obj
+	}
+
 
     g_commander.subscribe(async (command) => {
 
@@ -552,18 +557,20 @@ import { tick } from "svelte";
 			if ( g_recovering_resize ) {
 				g_recovering_resize = false
 				setTimeout(() => {
-					selection_on = false
-					let points = can_draw_selected.pars.points
-					canvas_mouse.x = points[0]*magnification + 2
-					canvas_mouse.y = points[1]*magnification + 2
-					//
-					let mock_evt = {
-									target : selection_box,
-									clientX : 0,
-									clientY : 0
-								}
-					//
-					start_tracking(mock_evt)
+					if ( can_draw_selected ) {
+						selection_on = false
+						let points = can_draw_selected.pars.points
+						canvas_mouse.x = points[0]*magnification + 2
+						canvas_mouse.y = points[1]*magnification + 2
+						//
+						let mock_evt = {
+										target : selection_box,
+										clientX : 0,
+										clientY : 0
+									}
+						//
+						start_tracking(mock_evt)
+					}
 				},20)
 			}
 		//}
@@ -612,7 +619,8 @@ import { tick } from "svelte";
 			set_selection_controls(false)
 			drawing = true
 			tool_parameters.parameters.points = [mouse_x,mouse_y,2,2]
-			draw_control.add(tool_parameters.shape,tool_parameters.parameters)
+			let pars = object_clone(tool_parameters.parameters)
+			draw_control.add(tool_parameters.shape,pars)
 			draw_control.command("select_top")
 			//
 		} else if ( !( tool === 'select' ) && is_line(shape) ) {
@@ -620,7 +628,8 @@ import { tick } from "svelte";
 			set_selection_controls(false)
 			drawing = true
 			tool_parameters.parameters.points = [mouse_x,mouse_y,mouse_x+2,mouse_y+2]
-			draw_control.add(tool_parameters.shape,tool_parameters.parameters)
+			let pars = object_clone(tool_parameters.parameters)
+			draw_control.add(tool_parameters.shape,pars)
 			draw_control.command("select_top")
 		} else if ( tool === 'select' ) {
 			selection_on = !selection_on
