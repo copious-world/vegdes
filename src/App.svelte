@@ -21,6 +21,7 @@
 
 	import CanEdit from './can_edit.svelte'
 	import { commander } from './edit_commands'
+	import { g_select_parameters } from './param_updates'
 
 	// https://github.com/agrinko/js-undo-manager
 	// https://github.com/dnass/svelte-canvas
@@ -386,6 +387,8 @@
 	let object_sides = 3
 	let object_pointiness = 1
 	let object_radial_shift = 1
+	let object_orient = "edge"
+	let object_radius_multiplier = 1
 
 	let object_rotate = 0.0
 	let object_corner = 0.0
@@ -405,6 +408,23 @@
 	let object_cp1 = { "x" : 0, "y" : 0}
 	let object_cp2 = { "x" : 0, "y" : 0}
 
+
+	g_select_parameters.subscribe(async (command) => {
+		let cmd = command.command
+		let selected = command.pars
+		switch ( cmd ) {
+			case "selected" : {
+				shape_values_to_fields(selected.shape,selected.pars)
+				break;
+			}
+			case "update_selected": {
+				shape_values_to_fields(selected.shape,selected.pars)
+			}
+			default : {
+
+			}
+		}
+	})
 
 
 	$: {
@@ -448,7 +468,8 @@
 		'object_sides': object_sides,
 		'object_pointiness': object_pointiness,
 		'object_radial_shift': object_radial_shift,
-
+		'object_radius_multiplier' : object_radius_multiplier,
+		//
 		'object_rotate': object_rotate,
 		'object_corner': object_corner,
 
@@ -468,7 +489,7 @@
 	let connector_names = ["x1", "y1", "x2", "y2"]
 	let path_names = ["x", "y"]
 	let polygon_names = ["x", "y", "r", "sides"]
-	let star_names = ["x", "y", "r", "points", "pointiness", "radial-shift"]
+	let star_names = ["x", "y", "r", "points", "pointiness", "radial-shift", "radius-multiplier"]
 	let component_names = ["x", "y"]
 	let group_names = ["x", "y", "group", "relative", "align-left", "align-center", "align-right", "align-top", "align-middle", "align-bottom"]
 	let grouped_names = ["x", "y", "label", "ungroup" ]
@@ -488,6 +509,79 @@
 		"path" : path_names,
 		"bezier" : curve_names,
 		"quadratic" : quadratic_names
+	}
+
+
+	function set_rect_fields(pars) {
+		let points = pars.points
+		object_x = points[0]
+		object_y = points[1]
+		object_width = points[2]
+		object_height = points[3]
+		//"corner"
+	}
+	function set_ellipse_fields(pars,regular) {
+		let points = pars.points
+		object_cx = points[0]
+		object_cy = points[1]
+		if ( regular ) {
+			object_r = points[2]
+		} else {
+			object_rx = points[2]
+			object_ry = points[3]
+		}
+	}
+	function set_line_fields(pars) {
+		let points = pars.points
+		object_x1 = points[0]
+		object_y1 = points[1]
+		object_x2 = points[2]
+		object_y2 = points[3]
+	}
+	function set_polygon_fields(pars,regular) {
+		let points = pars.points
+		object_x = points[0]
+		object_y = points[1]
+		object_r = points[2]
+		object_sides = pars.sides
+	}
+	function set_star_fields(pars) {
+		object_x = points[0]
+		object_y = points[1]
+		object_r = points[2]
+		object_points = pars.star_points
+		object_radial_shift = pars.radial_shift
+		object_pointiness = pars.pointiness
+		object_radius_multiplier = pars.radius_multiplier
+		object_radial_shift = pars.radial_shift
+	}
+	function set_text_fields(pars) {
+	}
+	function set_component_fields(pars) {
+	}
+	function set_path_fields(pars) {
+	}
+	function set_bezier_fields(pars) {
+	}
+	function set_quadratic_fields(pars) {
+	}
+
+
+	function shape_values_to_fields(shape,pars) {
+		//
+		switch ( shape ) {
+			case "rect" : { set_rect_fields(pars); break;}
+			case "ellipse" : { set_ellipse_fields(pars); break;}
+			case "circle" : { set_ellipse_fields(pars,true); break;}
+			case "line" : { set_line_fields(pars); break;}
+			case "polygon" : { set_polygon_fields(pars); break;}
+			case "star" : { set_star_fields(pars); break;}
+			case "text" : { set_text_fields(pars); break;}
+			case "component" : { set_component_fields(pars); break;}
+			case "path" : { set_path_fields(pars); break;}
+			case "bezier" : { set_bezier_fields(pars); break;}
+			case "quadratic" : { set_quadratic_fields(pars); break;}
+		}
 	}
 
 	function selection_mode_var(var_name) {
@@ -658,7 +752,8 @@
 				parameters.radial_shift = object_radial_shift
 				parameters.orient = "edge"
 				parameters.radial_shift = object_radial_shift
-				parameters.radius_multiplier = object_pointiness  // ??
+				parameters.radius_multiplier = object_radius_multiplier  // ??
+				parameters.pointiness = object_pointiness
 				parameters.star_points = object_points
 				break;
 			}

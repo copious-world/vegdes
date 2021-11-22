@@ -1,8 +1,9 @@
 <script>
-import { tick } from "svelte";
 
     import CanDraw from "svelte-can-draw"
-	import {g_commander} from './edit_commands'
+	import { g_commander } from './edit_commands'
+	import { tick } from "svelte";
+	import { parameter_publisher } from './param_updates'
 
     export let height = 460
     export let width = 680
@@ -57,7 +58,6 @@ import { tick } from "svelte";
 
 
     g_commander.subscribe(async (command) => {
-
         //
         let cmd_pars = command.pars
 		if ( command.command !== undefined  ) {
@@ -102,6 +102,35 @@ import { tick } from "svelte";
 			}
         }
     })
+
+
+	async function parameters_update(pars) {
+		draw_control.update(pars)
+		await tick()
+		parameter_publisher.command("update_selected",can_draw_selected)
+	}
+
+	async function change_selection(sel_id,prev_shape_index) {
+		if ( typeof sel_id === 'string' ) {
+			draw_control.command("select_top")
+			await tick()
+			if ( can_draw_selected ) {
+				parameter_publisher.command("selected",can_draw_selected)
+			}
+		} else if ( typeof sel_id === 'boolean' ) {
+			if ( can_draw_selected && (prev_shape_index !== undefined) ) {
+				draw_control.command("deselect",{"select" : prev_shape_index})
+				await tick()
+				parameter_publisher.command("deselect",{})
+			}
+		} else {
+			draw_control.command("select",{"select" : sel_id})
+			await tick()
+			if ( can_draw_selected ) {
+				parameter_publisher.command("selected",can_draw_selected)
+			}
+		}
+	}
 
 
 	let selection_active = false
@@ -151,7 +180,7 @@ import { tick } from "svelte";
 					let new_top = mouse_y - points[1]
 					if ( new_top > 0 ) { points[3] = new_top }
 					let new_pars = Object.assign(can_draw_selected.pars,{ 'points': points })
-					draw_control.update(new_pars)
+					parameters_update(new_pars)
 				} else if ( can_draw_selected.shape === 'ellipse' ) {
 					let points = can_draw_selected.pars.points
 					let new_left = mouse_x - points[0]
@@ -159,20 +188,20 @@ import { tick } from "svelte";
 					let new_top = mouse_y - points[1]
 					if ( new_top > 0 ) { points[3] = new_top/2 }
 					let new_pars = Object.assign(can_draw_selected.pars,{ 'points': points })
-					draw_control.update(new_pars)
+					parameters_update(new_pars)
 				} else if ( (can_draw_selected.shape === 'polygon') || (can_draw_selected.shape === 'star') ) {
 					let points = can_draw_selected.pars.points
 					let new_left = mouse_x - points[0]
 					let new_top = mouse_y - points[1]
 					if ( new_left > 0 ) { points[2] = Math.sqrt(new_left*new_left + new_top*new_top) }
 					let new_pars = Object.assign(can_draw_selected.pars,{ 'points': points })
-					draw_control.update(new_pars)
+					parameters_update(new_pars)
 				} else if ( can_draw_selected.shape === 'line' ) { 
 					let points = can_draw_selected.pars.points
 					points[2] = mouse_x
 					points[3] = mouse_y
 					let new_pars = Object.assign(can_draw_selected.pars,{ 'points': points })
-					draw_control.update(new_pars)
+					parameters_update(new_pars)
 				}
 			}
 		}
@@ -263,7 +292,7 @@ import { tick } from "svelte";
 				if ( xchange ) points[2] = select_width
 				if ( ychange ) points[3] = select_height
 				let new_pars = Object.assign(can_draw_selected.pars,{ 'points': points })
-				draw_control.update(new_pars)
+				parameters_update(new_pars)
 			} else if ( can_draw_selected.shape === 'line' ) {
 				let points = can_draw_selected.pars.points
 				if ( diff_source ) {
@@ -341,7 +370,7 @@ import { tick } from "svelte";
 				}
 
 				let new_pars = Object.assign(can_draw_selected.pars,{ 'points': points })
-				draw_control.update(new_pars)
+				parameters_update(new_pars)
 			} else {
 				if ( diff_source ) {
 					let points = can_draw_selected.pars.points
@@ -400,13 +429,13 @@ import { tick } from "svelte";
 						}
 					}
 					let new_pars = Object.assign(can_draw_selected.pars,{ 'points': points })
-					draw_control.update(new_pars)
+					parameters_update(new_pars)
 				} else {
 					let points = can_draw_selected.pars.points
 					points[0] += dx
 					points[1] += dy
 					let new_pars = Object.assign(can_draw_selected.pars,{ 'points': points })
-					draw_control.update(new_pars)
+					parameters_update(new_pars)
 				}
 			}
 		}
@@ -464,7 +493,7 @@ import { tick } from "svelte";
 			} else {
 				if ( can_draw_selected ) {
 					let new_pars = Object.assign(can_draw_selected.pars,{ 'text': text_value })
-					draw_control.update(new_pars)
+					parameters_update(new_pars)
 				}
 			}
 		}
@@ -607,7 +636,7 @@ import { tick } from "svelte";
 			set_selection_controls(false)
 			drawing = true
 			draw_control.add("rect",{ "thick" : 2, "line" : "black", "fill" : "rgba(100,200,220,0.9)", "points" : [mouse_x,mouse_y,2,2] })
-			draw_control.command("select_top")
+			change_selection("select_top")
 		} else if ( is_text(tool) ) {
 			selection_on = false
 			set_selection_controls(false)
@@ -621,7 +650,7 @@ import { tick } from "svelte";
 			tool_parameters.parameters.points = [mouse_x,mouse_y,2,2]
 			let pars = object_clone(tool_parameters.parameters)
 			draw_control.add(tool_parameters.shape,pars)
-			draw_control.command("select_top")
+			change_selection("select_top")
 			//
 		} else if ( !( tool === 'select' ) && is_line(shape) ) {
 			selection_on = false
@@ -630,21 +659,22 @@ import { tick } from "svelte";
 			tool_parameters.parameters.points = [mouse_x,mouse_y,mouse_x+2,mouse_y+2]
 			let pars = object_clone(tool_parameters.parameters)
 			draw_control.add(tool_parameters.shape,pars)
-			draw_control.command("select_top")
+			change_selection("select_top")
 		} else if ( tool === 'select' ) {
 			selection_on = !selection_on
 			//
 			let prev_shape_index = shape_index
 			draw_control.searching({ "mouse_loc" : [canvas_mouse.x/magnification,canvas_mouse.y/magnification] })
+			await tick()
 			selection_changed = (prev_shape_index !== shape_index)
 			if ( (shape_index !== false) && (shape_index >= 0) ) {
-				draw_control.command("select",{"select" : shape_index})
+				change_selection(shape_index)
 				//
 				if ( shape_index >= 0 ) {
 					selection_on = true
 				}
 			} else {
-				draw_control.command("deselect",{"select" : prev_shape_index})
+				change_selection(false,prev_shape_index)
 			}
 			//
 			if ( (shape_index !== false) && (shape_index >= 0) ) {
