@@ -4,6 +4,7 @@
 	import { g_commander } from './edit_commands'
 	import { tick } from "svelte";
 	import { parameter_publisher } from './param_updates'
+	import { redo_list } from "./undo_redo"
 
     export let height = 460
     export let width = 680
@@ -38,6 +39,8 @@
 	let prev_doc_left = doc_left
 	let prev_doc_top = doc_top
 
+
+	let multi_selected = false
 
 	let canvas_mouse
 	let drawing = false
@@ -82,21 +85,45 @@
 						draw_control.command("select_top")
 						await tick()
 						canvas_changed = true
+						await fetch_zlist()
 						break;
 					}
 					case "delete" : {
 						draw_control.command("remove_seleted")
 						await tick()
 						set_selection_controls(false)
+						await fetch_zlist()
 						break;
 					}
 					case "to_top" : {
 						draw_control.command("send_top",{ "select" : false })
+						await fetch_zlist()
 						break;
 					}
 					case "to_bottom" : {
 						draw_control.command("send_bottom",{ "select" : false })
+						await fetch_zlist()
 						break;
+					}
+					case "undo_to" : {
+						let ith = cmd_pars.offset
+						redo_restore(ith)
+						break;
+					}
+					case "redo_to" : {
+						let ith = -cmd_pars.offset
+						redo_restore(ith)
+						break;
+					}
+					case "colorize" : {
+						if ( cmd_pars.line ) {
+							let new_pars = Object.assign(can_draw_selected.pars,{ 'line': cmd_pars.line })
+							draw_control.update(new_pars)
+						} else if ( cmd_pars.fill ) {
+							let new_pars = Object.assign(can_draw_selected.pars,{ 'fill': cmd_pars.fill })
+							draw_control.update(new_pars)
+						}
+						break
 					}
 				}
 			}
@@ -128,6 +155,44 @@
 			await tick()
 			if ( can_draw_selected ) {
 				parameter_publisher.command("selected",can_draw_selected)
+			}
+		}
+	}
+
+
+	async function multi_selection() {
+		draw_control.multi_select({ "rect" : [select_left,select_top,select_width,select_height] })
+		await tick()
+		selection_indication(multi_selected,true)
+		// multi_selected
+	}
+
+
+
+	function selection_indication(selected_list,on_off) {
+		for ( let ith of selected_list ) {
+			draw_control.command("bounding_path",{ "index" : ith, "state" : on_off})
+		}
+
+	}
+
+
+	let catch_selection = false
+	let z_list = false
+	async function fetch_zlist() {
+		draw_control.z_list()
+		await tick()
+		if ( z_list ) {
+			redo_list.push(z_list)
+		}
+	}
+
+	async function redo_restore(ith) {
+		let n = redo_list.size()
+		if ( n > 0 ) {
+			let a_z_list = redo_list.get(n - ith)
+			if ( a_z_list ) {
+				draw_control.command("z_list_replace",{ "z_list" : a_z_list })
 			}
 		}
 	}
@@ -476,7 +541,7 @@
 
 
 	async function startup_new_text() {
-		draw_control.add("text",{ "thick" : 2, "line" : "black", "fill" : "rgba(220,100,20,0.7)", "points" : [text_loc.x,text_loc.y], 
+		draw_control.add("text",{ "thick" : 2, "line" : tool_parameters.parameters.line, "fill" : tool_parameters.parameters.fill, "points" : [text_loc.x,text_loc.y], 
 									"text" : text_value, "font":  "bold 32px Arial",
 									"textAlign" : "center", "textBaseline" : "middle"
 								})
@@ -635,7 +700,7 @@
 			selection_on = false
 			set_selection_controls(false)
 			drawing = true
-			draw_control.add("rect",{ "thick" : 2, "line" : "black", "fill" : "rgba(100,200,220,0.9)", "points" : [mouse_x,mouse_y,2,2] })
+			draw_control.add("rect",{ "thick" : 2, "line" : tool_parameters.parameters.line, "fill" : tool_parameters.parameters.fill, "points" : [mouse_x,mouse_y,2,2] })
 			change_selection("select_top")
 		} else if ( is_text(tool) ) {
 			selection_on = false
@@ -716,7 +781,10 @@
 		} 
 	}
 
-	function stop_tracking(evt) {
+	async function stop_tracking(evt) {
+		if ( drawing ) {
+			await fetch_zlist()
+		}
 		drawing = false
 	}
 
@@ -741,7 +809,7 @@
 	let handle_selected = false
 	let grabbable_handle = false
 
-	function reposition(evt) {
+	async function reposition(evt) {
 		if ( drag_selection && selection_box && (evt.buttons == 1) ) {
 			let new_x = evt.clientX
 			let new_y = evt.clientY
@@ -755,6 +823,8 @@
 			save_selection_bounds()
 			if ( (shape_index !== false) && (shape_index >= 0) ) {
 				update_selected_object(dif_x,dif_y,true,true)
+			} else {
+				multi_selection()
 			}
 		}
 		if ( handle_selected && grabbable_handle && (evt.buttons == 1) ) {
@@ -769,18 +839,28 @@
 			save_selection_bounds()
 			if ( (shape_index !== false) && (shape_index >= 0) ) {
 				update_selected_object(dif_x,dif_y,xtrue,ytrue,grabbable_handle)
+			} else {
+				multi_selection()
 			}
 		}
 		if ( evt.buttons === 0 ) {
 			drag_selection = false
 			handle_selected = false
+			if ( catch_selection ) {
+				catch_selection = false
+				await fetch_zlist()
+			}
 		}
 	}
 
-	function stop_drags(evt) {
+	async function stop_drags(evt) {
 		if ( drag_selection ) {
 			drag_selection = false
 			handle_selected = false
+			if ( catch_selection ) {
+				catch_selection = false
+				await fetch_zlist()
+			}
 		}
 	}
 
@@ -903,6 +983,7 @@
 
 	}
 
+
 /*
     //
 	//
@@ -924,7 +1005,7 @@
 
 </script>
 <div bind:this={drag_region} on:mousedown={start_tracking} on:mouseup={stop_tracking} style="height:inherit;width:inherit" on:mousemove={reposition} on:mouseup={stop_drags}>
-	<CanDraw bind:selected={can_draw_selected} bind:mouse_to_shape={shape_index} bind:canvas_mouse={canvas_mouse}  bind:canvas_changed={canvas_changed} {height} {width} {doc_left} {doc_top} {doc_width} {doc_height}  />
+	<CanDraw bind:selected={can_draw_selected} bind:mouse_to_shape={shape_index} bind:multi_select={multi_selected} bind:canvas_mouse={canvas_mouse}  bind:canvas_changed={canvas_changed} bind:z_list={z_list} {height} {width} {doc_left} {doc_top} {doc_width} {doc_height}  />
 	<div bind:this={selection_box} class="selection-box" style={selection_style} on:mousedown|capture|preventDefault|stopPropagation={grab_selection} >&nbsp</div>
 	<div bind:this={handle_box_tl} class="handle-box top-left-c" style={handle_top_left_style} on:mousedown|capture|preventDefault|stopPropagation={grab_handle} >&nbsp</div>
 	<div bind:this={handle_box_top} class="handle-box top-c"  style={handle_top_style} on:mousedown|capture|preventDefault|stopPropagation={grab_handle} >&nbsp</div>

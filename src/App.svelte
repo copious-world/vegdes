@@ -407,6 +407,10 @@
 
 	let object_cp1 = { "x" : 0, "y" : 0}
 	let object_cp2 = { "x" : 0, "y" : 0}
+	//
+	//
+	let object_stroke = "black"
+	let object_fill = "rgba(100,200,220,0.9)"
 
 
 	g_select_parameters.subscribe(async (command) => {
@@ -462,7 +466,6 @@
 		'object_r': object_r,
 		'object_rx': object_rx,
 		'object_ry': object_ry,
-
 
 		'object_points': object_points,
 		'object_sides': object_sides,
@@ -803,8 +806,8 @@
 				"tool"  : g_current_tool,
 				"parameters" : {
 					"thick" : 2, 
-					"line" : "black", 
-					"fill" : "rgba(100,200,220,0.9)", 
+					"line" : object_stroke, 
+					"fill" : object_fill, 
 					"points" : points_array,
 					"rotate" : rotation
 				}
@@ -843,13 +846,46 @@
 
 	let is_viz = "hidden"
 
+	/*
+	let fill_color = "#00FFFF"
+	let fill_color_inverted = "#FF0000"
+
+	let stroke_color = "#00FFFF"
+	let stroke_color_inverted = "#FF0000"
+	*/
+
+	let color_picker_intializer = false
+
 	function colorCallback(rgba) {
-		console.log(rgba.detail)
+		let color_spec = rgba.detail
+		let a = color_spec.a
+		let b = color_spec.b
+		let g = color_spec.g
+		let r = color_spec.r
+		let rgba_color = `rgba(${r},${g},${b},${a})`
+		console.log(rgba_color)
+		if ( color_picker_intializer === 'color-fill' ) {
+			fill_color = `rgb(${r},${g},${b})`
+			fill_color_inverted = `rgb(${255-r},${255-g},${255-b})`
+			object_fill = `rgba(${r},${g},${b},${a})`
+			if ( g_current_selection_object !== false ) {
+				commander.command("colorize",{ "fill" : object_fill } )
+			}
+		} else if ( color_picker_intializer === 'color-line' ) {
+			stroke_color = `rgb(${r},${g},${b})`
+			stroke_color_inverted = `rgb(${255-r},${255-g},${255-b})`
+			object_stroke = `rgba(${r},${g},${b},${a})`
+			if ( g_current_selection_object !== false ) {
+				commander.command("colorize",{ "line" : object_stroke } )
+			}
+		}
+		//
 	}
 
 	function show_picker(evt) {
 		is_viz = (is_viz === "hidden") ? "visible" : "hidden"
 		let clicker = evt.target
+		color_picker_intializer = clicker.id
 		if ( clicker ) {
 			let clicker_rect = clicker.getBoundingClientRect()
 			let top = clicker_rect.top - 300
@@ -1017,6 +1053,8 @@
 	function do_move_bottom_selected(ev) {
 		commander.command("to_bottom",{})
 	}
+
+
 
 
 </script>
