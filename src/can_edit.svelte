@@ -697,6 +697,8 @@
 	}
 
 
+	let abeyance = false
+
 	async function start_tracking(evt) {
 		turn_off_text()
 		draw_control.command("deselect")
@@ -736,7 +738,7 @@
 			let prev_shape_index = shape_index
 			draw_control.searching({ "mouse_loc" : [canvas_mouse.x/magnification,canvas_mouse.y/magnification] })
 			await tick()
-			selection_changed = (prev_shape_index !== shape_index)
+			selection_changed = (prev_shape_index !== shape_index) || abeyance
 			if ( (shape_index !== false) && (shape_index >= 0) ) {
 				change_selection(shape_index)
 				//
@@ -764,6 +766,7 @@
 				}
 				set_selection_controls(selection_on)
 			} else {
+				abeyance = false
 				if ( selection_on ) {
 					var rect = drag_region.getBoundingClientRect();
 					var mouseX = evt.clientX - rect.left;
@@ -862,7 +865,10 @@
 		if ( drag_selection ) {
 			drag_selection = false
 			handle_selected = false
-			selection_style = `visibilty:hidden;display:none;left:0px;top:0px;width:1px;height:1px`
+			if ( shape_index !== false && shape_index >= 0  ) {
+				selection_style = `visibilty:hidden;display:none;left:0px;top:0px;width:1px;height:1px`
+				abeyance = true
+			}
 			await tick()
 			if ( catch_selection ) {
 				catch_selection = false

@@ -554,6 +554,7 @@
 		object_sides = pars.sides
 	}
 	function set_star_fields(pars) {
+		let points = pars.points
 		object_x = points[0]
 		object_y = points[1]
 		object_r = points[2]
@@ -834,9 +835,47 @@ let object_text_align_right = false
 let object_text_size = 32
 */
 
+
+	function update_points(p_name) {
+		if ( g_current_selection_object !== false ) {
+			let points = g_current_selection_object.pars.points
+			switch ( p_name ) {
+				case "x" : { points[0] = object_x; break }
+				case "y" : { points[1] = object_y; break }
+				case "w" : { points[2] = object_width; break }
+				case "h" : { points[3] = object_height; break }
+				case "x1" : { points[0] = object_x1; break }
+				case "y1" : { points[1] = object_y1; break }
+				case "x2" : { points[2] = object_x2; break }
+				case "y2" : { points[3] = object_y2; break }
+				case "cx" : { points[0] = object_cx; break }
+				case "cy" : { points[1] = object_cy; break }
+				case "r" : { points[2] = object_r; break }
+				case "rx" : { points[2] = object_rx; break }
+				case "ry" : { points[3] = object_rx; break }
+			}
+			
+			commander.command("update_parameter",{ "points" : points })
+		}
+	}
+
+
 	function update_thick(ev) {
 		parameter_change("thick","object_line_thick")
 		commander.command("update_parameter",{ "thick": object_line_thick } )
+	}
+
+	function update_sides(ev) {
+		commander.command("update_parameter",{ "sides": object_sides } )
+	}
+
+	function update_star_points(ev) {
+		commander.command("update_parameter",{ 
+			"star_points": object_points, 
+			"pointiness" : object_pointiness,
+			"radial_shift" : object_radial_shift,
+			"radius_multiplier" : object_radius_multiplier
+		} )
 	}
 
 	let font_bold_selected = "black"
@@ -857,6 +896,33 @@ let object_text_size = 32
 	$: {
 		font_bold_selected = `border: solid 2px ${object_text_bold ? "gold" : "black"}` 
 		font_italic_selected = `border: solid 2px ${object_text_italic ? "gold" : "black"}`
+	}
+
+	async function do_align_left(ev) {
+		object_text_align_left = !object_text_align_left
+		object_text_align_center =  !object_text_align_left
+		object_text_align_right =  !object_text_align_left
+	}
+	async function do_align_center(ev) {
+		object_text_align_center = !object_text_align_center
+		object_text_align_left =  !object_text_align_center
+		object_text_align_right =  !object_text_align_center
+	}
+	async function do_align_right(ev) {
+		object_text_align_right = !object_text_align_right
+		object_text_align_left =  !object_text_align_right
+		object_text_align_center =  !object_text_align_right
+	}
+	//
+
+	let align_left_selected = ""
+	let align_center_selected = ""
+	let align_right_selected = ""
+	//
+	$: {
+		align_left_selected = `border: solid 2px ${object_text_align_left ? "gold" : "black"}` 
+		align_center_selected = `border: solid 2px ${object_text_align_center ? "gold" : "black"}`
+		align_right_selected = `border: solid 2px ${object_text_align_right ? "gold" : "black"}`
 	}
 
 
@@ -1108,22 +1174,6 @@ let object_text_size = 32
 
 	}
 
-
-	function toggle_grid(evt) {
-		g_show_grid = !g_show_grid
-		/*
-		if ( g_show_grid && g_canvas_element ) {
-			draw_grid_on_canvas(g_canvas_element,calc_magnification)	
-		} else if ( g_canvas_element ) {
-			clear_grid_from_canvas(g_canvas_element,calc_magnification)	
-		}
-		*/
-	}
-
-	function toggle_wireframe(evt) {
-		
-	}
-
 	function do_clone_selected(ev) {
 		commander.command("clone",{ "offset_x" : 10, "offset_y" : 10})
 	}
@@ -1140,6 +1190,22 @@ let object_text_size = 32
 		commander.command("to_bottom",{})
 	}
 
+
+
+	function toggle_grid(evt) {
+		g_show_grid = !g_show_grid
+		/*
+		if ( g_show_grid && g_canvas_element ) {
+			draw_grid_on_canvas(g_canvas_element,calc_magnification)	
+		} else if ( g_canvas_element ) {
+			clear_grid_from_canvas(g_canvas_element,calc_magnification)	
+		}
+		*/
+	}
+
+	function toggle_wireframe(evt) {
+		
+	}
 
 
 
@@ -1226,48 +1292,48 @@ let object_text_size = 32
 	{/if}
 
 	{#if (g_selector || g_free_mode) && selection_mode_var('x') }
-		<span class="top-text" >x:</span><input type=number  class="top-input"  bind:value={object_x} />
+		<span class="top-text" >x:</span><input type=number  class="top-input"  bind:value={object_x} on:change={(ev) => { update_points("x") }} />
 	{/if}
 	{#if (g_selector || g_free_mode) && selection_mode_var('y') }
-		<span class="top-text" >y:</span><input type=number  class="top-input"  bind:value={object_y} />
+		<span class="top-text" >y:</span><input type=number  class="top-input"  bind:value={object_y} on:change={(ev) => { update_points("y") }} />
 	{/if}
 
-	{#if (g_selector || g_free_mode) && selection_mode_var('w') }
-		<span class="top-text" >h:</span><input type=number  class="top-input"  bind:value={object_width} />
-	{/if}
 	{#if (g_selector || g_free_mode) && selection_mode_var('h') }
-		<span class="top-text" >w:</span><input type=number  class="top-input"  bind:value={object_height} />
+		<span class="top-text" >h:</span><input type=number  class="top-input"  bind:value={object_height} on:change={(ev) => { update_points("h") }} />
+	{/if}
+	{#if (g_selector || g_free_mode) && selection_mode_var('w') }
+		<span class="top-text" >w:</span><input type=number  class="top-input"  bind:value={object_width} on:change={(ev) => { update_points("w") }} />
 	{/if}
 
 	<!-- lines -->
 	{#if (g_selector || g_free_mode) && selection_mode_var('x1') }
-		<span class="top-text" >x1:</span><input type=number  class="top-input"  bind:value={object_x1} />
+		<span class="top-text" >x1:</span><input type=number  class="top-input"  bind:value={object_x1} on:change={(ev) => { update_points("x1") }} />
 	{/if}
 	{#if (g_selector || free_mode) && selection_mode_var('y1') }
-		<span class="top-text" >y1:</span><input type=number  class="top-input"  bind:value={object_y1} />
+		<span class="top-text" >y1:</span><input type=number  class="top-input"  bind:value={object_y1} on:change={(ev) => { update_points("y1") }} />
 	{/if}
 	{#if (g_selector || g_free_mode) && selection_mode_var('x2') }
-		<span class="top-text" >x2:</span><input type=number  class="top-input"  bind:value={object_x2} />
+		<span class="top-text" >x2:</span><input type=number  class="top-input"  bind:value={object_x2} on:change={(ev) => { update_points("x2") }} />
 	{/if}
 	{#if (g_selector || g_free_mode) && selection_mode_var('y2') }
-		<span class="top-text" >y2:</span><input type=number  class="top-input"  bind:value={object_y2} />
+		<span class="top-text" >y2:</span><input type=number  class="top-input"  bind:value={object_y2} on:change={(ev) => { update_points("y2") }} />
 	{/if}
 	
 	<!-- circles -->
 	{#if (g_selector || g_free_mode) && selection_mode_var('cx') }
-		<span class="top-text" >cx:</span><input type=number  class="top-input"  bind:value={object_cx} />
+		<span class="top-text" >cx:</span><input type=number  class="top-input"  bind:value={object_cx} on:change={(ev) => { update_points("cx") }} />
 	{/if}
 	{#if (g_selector || g_free_mode) && selection_mode_var('cy') }
-		<span class="top-text" >cy:</span><input type=number  class="top-input"  bind:value={object_cy} />
+		<span class="top-text" >cy:</span><input type=number  class="top-input"  bind:value={object_cy} on:change={(ev) => { update_points("cy") }} />
 	{/if}
 	{#if (g_selector || g_free_mode) && selection_mode_var('r') }
-		<span class="top-text" >R:</span><input type=number  class="top-input"  bind:value={object_r} />
+		<span class="top-text" >R:</span><input type=number  class="top-input"  bind:value={object_r} on:change={(ev) => { update_points("r") }} />
 	{/if}
 	{#if (g_selector || g_free_mode) && selection_mode_var('rx') }
-		<span class="top-text" >rx:</span><input type=number  class="top-input"  bind:value={object_rx} />
+		<span class="top-text" >rx:</span><input type=number  class="top-input"  bind:value={object_rx} on:change={(ev) => { update_points("rx") }} />
 	{/if}
 	{#if (g_selector || g_free_mode) && selection_mode_var('ry') }
-		<span class="top-text" >ry:</span><input type=number  class="top-input"  bind:value={object_ry} />
+		<span class="top-text" >ry:</span><input type=number  class="top-input"  bind:value={object_ry} on:change={(ev) => { update_points("ry") }} />
 	{/if}
 
 	{#if (g_selector || g_free_mode) && selection_mode_var('group') }
@@ -1324,18 +1390,18 @@ let object_text_size = 32
 		</div>
 	{/if}
 	{#if (g_selector || g_free_mode) && selection_mode_var('align-left') }
-		<div class="bottom-menu-button" >
-			<img class="v-left-menu-item"  src="./images/align_left.svg" alt="align left" title="align left" />
+		<div class="bottom-menu-button big_pict" style={align_left_selected}  >
+			<img class="v-left-menu-item big_pict"  src="./images/align_left.svg" alt="align left" title="align left" on:click={do_align_left} />
 		</div>
 	{/if}
 	{#if (g_selector || g_free_mode) && selection_mode_var('align-center') }
-		<div class="bottom-menu-button" >
-			<img class="v-left-menu-item"  src="./images/align_center.svg" alt="align center" title="align center" />
+		<div class="bottom-menu-button big_pict" style={align_center_selected} >
+			<img class="v-left-menu-item big_pict"  src="./images/align_center.svg" alt="align center" title="align center" on:click={do_align_center} />
 		</div>
 	{/if}
 	{#if (g_selector || g_free_mode) && selection_mode_var('align-right') }
-		<div class="bottom-menu-button" >
-			<img class="v-left-menu-item"  src="./images/align_right.svg" alt="align right" title="align right" />
+		<div class="bottom-menu-button big_pict" style={align_right_selected} >
+			<img class="v-left-menu-item big_pict"  src="./images/align_right.svg" alt="align right" title="align right" on:click={do_align_right} />
 		</div>
 	{/if}
 
@@ -1395,16 +1461,16 @@ let object_text_size = 32
 	{/if}
 
 	{#if (g_selector || g_free_mode) && selection_mode_var('points') }
-		<span class="top-text" >points:</span><input type=number  class="top-input"  bind:value={object_points} />
+		<span class="top-text" >points:</span><input type=number  class="top-input"  bind:value={object_points} on:change={update_star_points}/>
 	{/if}
 	{#if (g_selector || g_free_mode) && selection_mode_var('sides') }
-		<span class="top-text" >sides:</span><input type=number  class="top-input"  bind:value={object_sides} on:change={(ev) => { parameter_change("object_sides","sides") }} />
+		<span class="top-text" >sides:</span><input type=number  class="top-input"  bind:value={object_sides} on:change={update_sides} />
 	{/if}
 	{#if (g_selector || g_free_mode) && selection_mode_var('pointiness') }
-		<span class="top-text" >pointiness:</span><input type=number  class="top-input"  bind:value={object_pointiness} />
+		<span class="top-text" >pointiness:</span><input type=number  class="top-input"  bind:value={object_pointiness} on:change={update_star_points} />
 	{/if}
 	{#if (g_selector || g_free_mode) && selection_mode_var('radial-shift') }
-		<span class="top-text" >radial shift:</span><input type=number  class="top-input"  bind:value={object_radial_shift} />
+		<span class="top-text" >radial shift:</span><input type=number  class="top-input"  bind:value={object_radial_shift} on:change={update_star_points}/>
 	{/if}
 
 </div>
