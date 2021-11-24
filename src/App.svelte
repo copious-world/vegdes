@@ -409,8 +409,9 @@
 	let object_cp2 = { "x" : 0, "y" : 0}
 	//
 	//
-	let object_stroke = "black"
+	let object_stroke = "rgba(0,0,0,1.0)"
 	let object_fill = "rgba(100,200,220,0.9)"
+	let object_line_thick = 2
 
 
 	g_select_parameters.subscribe(async (command) => {
@@ -467,6 +468,8 @@
 		'object_rx': object_rx,
 		'object_ry': object_ry,
 
+		'object_line_thick' : object_line_thick,
+
 		'object_points': object_points,
 		'object_sides': object_sides,
 		'object_pointiness': object_pointiness,
@@ -483,8 +486,10 @@
 		'object_text' : object_text
 	}
 
+
+
 	//
-	let text_names = ["x", "y", "bold", "italic", "font", "align-left", "align-center", "align-right"]
+	let text_names = ["x", "y", "bold", "italic", "font", "align-left", "align-center", "align-right","font-size"]
 	let rect_names = ["x", "y", "w", "h", "corner"]
 	let circle_names = ["cx", "cy", "r"]
 	let ellipse_names = ["cx", "cy", "rx", "ry"]
@@ -572,6 +577,7 @@
 
 	function shape_values_to_fields(shape,pars) {
 		//
+		update_color_selections(pars)
 		switch ( shape ) {
 			case "rect" : { set_rect_fields(pars); break;}
 			case "ellipse" : { set_ellipse_fields(pars); break;}
@@ -777,7 +783,8 @@
 				parameters.textAlign = g_generalized_parameters.object_text_align
 				parameters.textBaseline = "middle"
 				let font_bold = object_text_bold ? "bold" : ""
-				parameters.font = `${font_bold} ${object_text_size}px ${object_text_font}`
+				let font_italic = object_text_italic ? "italic" : ""
+				parameters.font = `${font_bold} ${font_italic} ${object_text_size}px ${object_text_font}`
 				parameters.style = "plain"  // italic
 				break;
 			}
@@ -805,7 +812,7 @@
 				"shape" : shape,
 				"tool"  : g_current_tool,
 				"parameters" : {
-					"thick" : 2, 
+					"thick" : object_line_thick, 
 					"line" : object_stroke, 
 					"fill" : object_fill, 
 					"points" : points_array,
@@ -816,14 +823,65 @@
 		}
 	}
 
-	async function parameter_change(parameter_name,cpname) {
-		g_current_parameters.parameters[cpname] = g_generalized_parameters[parameter_name]
+/*
+let object_text_bold = false
+let object_text_italic = false
+let object_text_font = "Serif"
+let object_text_align = "left"  // object_align
+let object_text_align_left = true
+let object_text_align_center = false
+let object_text_align_right = false
+let object_text_size = 32
+*/
+
+	function update_thick(ev) {
+		parameter_change("thick","object_line_thick")
+		commander.command("update_parameter",{ "thick": object_line_thick } )
+	}
+
+	let font_bold_selected = "black"
+	let font_italic_selected = "black"
+	//
+
+	async function toggle_bold(ev) {
+		object_text_bold = !object_text_bold
+		await tick()
+		change_font(ev)
+	}
+	async function toggle_italic(ev) {
+		object_text_italic = !object_text_italic
+		await tick()
+		change_font(ev)
+	}
+
+	$: {
+		font_bold_selected = `border: solid 2px ${object_text_bold ? "gold" : "black"}` 
+		font_italic_selected = `border: solid 2px ${object_text_italic ? "gold" : "black"}`
+	}
+
+
+	//
+	async function change_font(ev) {
+		parameter_change("object_text_font","font")
+		//
+		if ( g_current_selection_object !== false ) {
+			if ( g_current_selection_object.shape === 'text' ) {
+				let font_bold = object_text_bold ? "bold" : ""
+				let font_italic = object_text_italic ? "italic" : ""
+				commander.command("update_parameter",{ "font": `${font_bold} ${font_italic} ${object_text_size}px ${object_text_font}` } )
+			}
+		}
+	}
+
+	async function parameter_change(parameter_name,cur_pname) {
+		g_current_parameters.parameters[cur_pname] = g_generalized_parameters[parameter_name]
 		await tick()
 	}
 
 	//
 	let show_hide_grid = "Show"
 	let show_hide_wireframe = "Show"
+
 
 	let fill_color = "#00FFFF"
 	let fill_color_inverted = "#FF0000"
@@ -834,6 +892,9 @@
 	let alpha_value_fill = 100;
 	let alpha_value_line = 100;
 
+	let picker_starter_stroke = object_stroke
+	let picker_starter_fill = object_fill
+
 	let guass_blur_level = 0;
 	function  blurry_changed(event) {
 		let blurry = event.target
@@ -843,49 +904,67 @@
 		guass_blur_level = parseInt(blurry.value)
 	}
 
+	function update_color_selections(pars) {
+		let line_c = pars.line
+		let fill_c = pars.fill
+		//
+		stroke_color = line_c 
+		fill_color = fill_c
+		object_stroke = line_c
+		object_fill = fill_c
+		//
+		picker_starter_fill = object_fill
+		picker_starter_stroke = object_stroke
+	}
 
-	let is_viz = "hidden"
 
-	/*
-	let fill_color = "#00FFFF"
-	let fill_color_inverted = "#FF0000"
+	let is_viz_fill = "hidden"
+	let is_viz_stroke = "hidden"
 
-	let stroke_color = "#00FFFF"
-	let stroke_color_inverted = "#FF0000"
-	*/
 
-	let color_picker_intializer = false
-
-	function colorCallback(rgba) {
+	function colorCallback_fill(rgba) {
 		let color_spec = rgba.detail
 		let a = color_spec.a
 		let b = color_spec.b
 		let g = color_spec.g
 		let r = color_spec.r
-		let rgba_color = `rgba(${r},${g},${b},${a})`
-		console.log(rgba_color)
-		if ( color_picker_intializer === 'color-fill' ) {
-			fill_color = `rgb(${r},${g},${b})`
-			fill_color_inverted = `rgb(${255-r},${255-g},${255-b})`
-			object_fill = `rgba(${r},${g},${b},${a})`
-			if ( g_current_selection_object !== false ) {
-				commander.command("colorize",{ "fill" : object_fill } )
-			}
-		} else if ( color_picker_intializer === 'color-line' ) {
-			stroke_color = `rgb(${r},${g},${b})`
-			stroke_color_inverted = `rgb(${255-r},${255-g},${255-b})`
-			object_stroke = `rgba(${r},${g},${b},${a})`
-			if ( g_current_selection_object !== false ) {
-				commander.command("colorize",{ "line" : object_stroke } )
-			}
+		fill_color = `rgb(${r},${g},${b})`
+		fill_color_inverted = `rgb(${255-r},${255-g},${255-b})`
+		object_fill = `rgba(${r},${g},${b},${a})`
+		if ( g_current_selection_object !== false ) {
+			commander.command("colorize",{ "fill" : object_fill } )
 		}
 		//
 	}
 
-	function show_picker(evt) {
-		is_viz = (is_viz === "hidden") ? "visible" : "hidden"
+
+
+	function colorCallback_stroke(rgba) {
+		let color_spec = rgba.detail
+		let a = color_spec.a
+		let b = color_spec.b
+		let g = color_spec.g
+		let r = color_spec.r
+		stroke_color = `rgb(${r},${g},${b})`
+		stroke_color_inverted = `rgb(${255-r},${255-g},${255-b})`
+		object_stroke = `rgba(${r},${g},${b},${a})`
+		if ( g_current_selection_object !== false ) {
+			commander.command("colorize",{ "line" : object_stroke } )
+		}
+	}
+
+
+	function show_picker(evt,fill_or_stroke) {
+		if ( fill_or_stroke ) {
+			is_viz_stroke = "hidden"
+			is_viz_fill = (is_viz_fill === "hidden") ? "visible" : "hidden"
+		} else {
+			is_viz_fill = "hidden"
+			is_viz_stroke = (is_viz_stroke === "hidden") ? "visible" : "hidden"
+		}
 		let clicker = evt.target
-		color_picker_intializer = clicker.id
+		picker_starter_fill = object_fill
+		picker_starter_stroke = object_stroke
 		if ( clicker ) {
 			let clicker_rect = clicker.getBoundingClientRect()
 			let top = clicker_rect.top - 300
@@ -893,6 +972,13 @@
 			colorizer_top = `${top}px`
 			colorizer_left = `${left}px`
 		}
+	}
+
+	function show_picker_fill(evt) {
+		show_picker(evt,true)
+	}
+	function show_picker_stroke(evt) {
+		show_picker(evt,false)
 	}
 
 
@@ -1215,21 +1301,20 @@
 		</div>
 		<input type=number  class="top-input"  bind:value={object_corner} />
 	{/if}
-
 	{#if (g_selector || g_free_mode) && selection_mode_var('bold') }
-		<div class="bottom-menu-button" >
-			<img class="bottom-menu-item"  src="./images/bold.svg" alt="bold" title="bold" />
+		<div class="bottom-menu-button big_pict" style={font_bold_selected} on:click={toggle_bold} >
+			<img class="bottom-menu-item big_pict"  src="./images/bold.svg" alt="bold" title="bold" />
 		</div>
 	{/if}
 	{#if (g_selector || g_free_mode) && selection_mode_var('italic') }
-		<div class="bottom-menu-button" >
-			<img class="bottom-menu-item"  src="./images/italic.svg" alt="italic" title="italic" />
+		<div class="bottom-menu-button big_pict" style={font_italic_selected} on:click={toggle_italic} >
+			<img class="bottom-menu-item big_pict"  src="./images/italic.svg" alt="italic" title="italic" />
 		</div>
 	{/if}
 	{#if (g_selector || g_free_mode) && selection_mode_var('font') }
 		<span class="top-text" >font:</span>
 		<div class="bottom-menu-button" style="vertical-align:bottom">
-			<select bind:value={object_text_font} style="height:25px;font-size:70%" >
+			<select bind:value={object_text_font} style="height:25px;font-size:70%" on:change={change_font} >
 				{#each object_text_fonts as a_font}
 					<option value={a_font.text}>
 						{a_font.text}
@@ -1253,6 +1338,12 @@
 			<img class="v-left-menu-item"  src="./images/align_right.svg" alt="align right" title="align right" />
 		</div>
 	{/if}
+
+	{#if (g_selector || g_free_mode) && selection_mode_var('font-size') }
+		<input type=number class="bottom-input" min='9' max='64' bind:value={object_text_size} on:change={change_font} />
+		<input type=range  class="top-input" min='9' max='64' bind:value={object_text_size} on:change={change_font} />
+	{/if}
+
 
 	{#if (g_selector || g_free_mode) && selection_mode_var('align-top') }
 		<div class="bottom-menu-button" >
@@ -1334,16 +1425,17 @@
 	<div class="bottom-menu-button" >
 		<img class="bottom-menu-item"  src="./images/fill.svg" alt="fill" title="fill" />
 	</div>
-	<button id="color-fill" class="picker-button" style="background-color:{fill_color};color:{fill_color_inverted}" on:click={show_picker}>fill</button>
+	<button id="color-fill" class="picker-button" style="background-color:{fill_color};color:{fill_color_inverted}" on:click={show_picker_fill}>fill</button>
 	<div class="bottom-menu-button" >
 		<img class="bottom-menu-item"  src="./images/stroke.svg" alt="stroke" title="stroke" />
 	</div>
-	<button id="color-line" class="picker-button" style="background-color:{stroke_color};color:{stroke_color_inverted}" on:click={show_picker}>stroke</button>
-	<div class="bottom-menu-button" >
-		<img class="bottom-menu-item"  src="./images/opacity.svg" alt="opacity" title="opacity" />
+	<button id="color-line" class="picker-button" style="background-color:{stroke_color};color:{stroke_color_inverted}" on:click={show_picker_stroke}>stroke</button>
+
+	<div style="vertical-align:bottom;display:inline-block;height:inherit">
+		<div style="display:inline-block;height:1px;width:20px;border-top: solid {object_line_thick}px black;border-bottom:none">&nbsp;</div>
 	</div>
-	<span style="color:greenyellow" >fill {alpha_value_fill}%</span>
-	<span style="color:greenyellow" >line {alpha_value_line}%</span>
+	<input type=number class="bottom-input" min="1" max="16" bind:value={object_line_thick} on:change={update_thick}>	
+
 	<div class="bottom-menu-button" on:click={ (evt) => { g_selector = (mode_toggle === 'eye_dropper'); set_selection_mode('eye_dropper') } } >
 		<img class="bottom-menu-item"  src="./images/eye_dropper.svg" alt="eye dropper" title="eye dropper" />
 	</div>
@@ -1438,8 +1530,12 @@
 	{/if}
 </BurgerMenu>
 
-<div class="color-box" style="visibility:{is_viz};top:{colorizer_top};left:{colorizer_left}" >
-	<HsvPicker on:colorChange={colorCallback} startColor={"#FBFBFB"}/>
+<div class="color-box" style="visibility:{is_viz_fill};top:{colorizer_top};left:{colorizer_left}" >
+	<HsvPicker on:colorChange={colorCallback_fill} startColor={picker_starter_fill}/>
+</div>
+
+<div class="color-box" style="visibility:{is_viz_stroke};top:{colorizer_top};left:{colorizer_left}" >
+	<HsvPicker on:colorChange={colorCallback_stroke} startColor={picker_starter_stroke}/>
 </div>
 
 
@@ -1569,6 +1665,12 @@
 	.bottom-input {
 		height: 20px;
 		width:60px;
+	}
+
+	.big_pict {
+		height : 24px;
+		max-height: 24px;
+		margin-bottom : 4px
 	}
 
 	.picker-button {

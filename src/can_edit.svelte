@@ -125,6 +125,11 @@
 						}
 						break
 					}
+					case "update_parameter" : {
+						let new_pars = Object.assign(can_draw_selected.pars,cmd_pars)
+						draw_control.update(new_pars)
+						break;
+					}
 				}
 			}
         }
@@ -541,8 +546,8 @@
 
 
 	async function startup_new_text() {
-		draw_control.add("text",{ "thick" : 2, "line" : tool_parameters.parameters.line, "fill" : tool_parameters.parameters.fill, "points" : [text_loc.x,text_loc.y], 
-									"text" : text_value, "font":  "bold 32px Arial",
+		draw_control.add("text",{ "thick" : tool_parameters.parameters.thick, "line" : tool_parameters.parameters.line, "fill" : tool_parameters.parameters.fill, "points" : [text_loc.x,text_loc.y], 
+									"text" : text_value, "font": tool_parameters.parameters.font,
 									"textAlign" : "center", "textBaseline" : "middle"
 								})
 		await tick()
@@ -700,7 +705,7 @@
 			selection_on = false
 			set_selection_controls(false)
 			drawing = true
-			draw_control.add("rect",{ "thick" : 2, "line" : tool_parameters.parameters.line, "fill" : tool_parameters.parameters.fill, "points" : [mouse_x,mouse_y,2,2] })
+			draw_control.add("rect",{ "thick" : tool_parameters.parameters.thick, "line" : tool_parameters.parameters.line, "fill" : tool_parameters.parameters.fill, "points" : [mouse_x,mouse_y,2,2] })
 			change_selection("select_top")
 		} else if ( is_text(tool) ) {
 			selection_on = false
@@ -857,6 +862,8 @@
 		if ( drag_selection ) {
 			drag_selection = false
 			handle_selected = false
+			selection_style = `visibilty:hidden;display:none;left:0px;top:0px;width:1px;height:1px`
+			await tick()
 			if ( catch_selection ) {
 				catch_selection = false
 				await fetch_zlist()
