@@ -166,7 +166,7 @@
 
 
 	async function multi_selection() {
-		draw_control.multi_select({ "rect" : [select_left,select_top,select_width,select_height] })
+		draw_control.multi_select({ "rect" : [(select_left - doc_left),(select_top - doc_top),select_width,select_height] })
 		await tick()
 		selection_indication(multi_selected,true)
 		// multi_selected
