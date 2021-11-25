@@ -2,7 +2,8 @@
 
     import CanDraw from "svelte-can-draw"
 	import { g_commander } from './edit_commands'
-	import { tick } from "svelte";
+	import { tick,afterUpdate } from "svelte";
+
 	import { parameter_publisher } from './param_updates'
 	import { redo_list } from "./undo_redo"
 
@@ -168,17 +169,7 @@
 	async function multi_selection() {
 		draw_control.multi_select({ "rect" : [(select_left - doc_left),(select_top - doc_top),select_width,select_height] })
 		await tick()
-		selection_indication(multi_selected,true)
-		// multi_selected
-	}
-
-
-
-	function selection_indication(selected_list,on_off) {
-		for ( let ith of selected_list ) {
-			draw_control.command("bounding_path",{ "index" : ith, "state" : on_off})
-		}
-
+		draw_control.command("bounding_paths",{ "list" : multi_selected, "state" : true})
 	}
 
 
@@ -288,17 +279,17 @@
 	}
 
 
-	let selection_style = `visibilty:hidden;display:none;left:0px;top:0px;width:1px;height:1px`
-	let handle_top_left_style = `visibilty:hidden;display:none;left:0px;top:0px`
-	let handle_left_style = `visibilty:hidden;display:none;left:0px;top:0px`
-	let handle_bottom_left_style = `visibilty:hidden;display:none;left:0px;top:0px`
+	let selection_style = `visibility:hidden;display:none;left:0px;top:0px;width:1px;height:1px`
+	let handle_top_left_style = `visibility:hidden;display:none;left:0px;top:0px`
+	let handle_left_style = `visibility:hidden;display:none;left:0px;top:0px`
+	let handle_bottom_left_style = `visibility:hidden;display:none;left:0px;top:0px`
 	//
-	let handle_top_style = `visibilty:hidden;display:none;left:0px;top:0px`
-	let handle_bottom_style = `visibilty:hidden;display:none;left:0px;top:0px`
+	let handle_top_style = `visibility:hidden;display:none;left:0px;top:0px`
+	let handle_bottom_style = `visibility:hidden;display:none;left:0px;top:0px`
 	//
-	let handle_top_right_style = `visibilty:hidden;display:none;left:0px;top:0px`
-	let handle_right_style = `visibilty:hidden;display:none;left:0px;top:0px`
-	let handle_bottom_right_style = `visibilty:hidden;display:none;left:0px;top:0px`
+	let handle_top_right_style = `visibility:hidden;display:none;left:0px;top:0px`
+	let handle_right_style = `visibility:hidden;display:none;left:0px;top:0px`
+	let handle_bottom_right_style = `visibility:hidden;display:none;left:0px;top:0px`
 
 	let prev_select_left = 300
 	let prev_select_top = 200
@@ -599,20 +590,20 @@
 		let mag_select_width = select_width*magnification + magnification
 		let mag_select_height = select_height*magnification + magnification
 		let delta = 2*magnification
-		selection_style = `visibilty:visible;display:block;left:${mag_select_left}px;top:${mag_select_top}px;width:${mag_select_width}px;height:${mag_select_height}px`
+		selection_style = `visibility:visible;display:block;left:${mag_select_left - delta/2}px;top:${mag_select_top - delta/2}px;width:${mag_select_width}px;height:${mag_select_height}px`
 		selection_style += ";cursor:move"
 		//grab_selection
 		//
-		handle_top_left_style = `visibilty:visible;display:block;left:${mag_select_left - delta}px;top:${mag_select_top - delta}px;`
-		handle_left_style = `visibilty:visible;display:block;left:${mag_select_left - delta}px;top:${mag_select_top + half_height - delta}px;`
-		handle_bottom_left_style = `visibilty:visible;display:block;left:${mag_select_left - delta}px;top:${mag_select_top + mag_select_height - delta}px;`
+		handle_top_left_style = `visibility:visible;display:block;left:${mag_select_left - delta}px;top:${mag_select_top - delta}px;`
+		handle_left_style = `visibility:visible;display:block;left:${mag_select_left - delta}px;top:${mag_select_top + half_height - delta}px;`
+		handle_bottom_left_style = `visibility:visible;display:block;left:${mag_select_left - delta}px;top:${mag_select_top + mag_select_height - delta}px;`
 		//
-		handle_top_style = `visibilty:visible;display:block;left:${mag_select_left + half_width - delta}px;top:${mag_select_top - delta}px;`
-		handle_bottom_style = `visibilty:visible;display:block;left:${mag_select_left + half_width - delta}px;top:${mag_select_top + mag_select_height - delta}px;`
+		handle_top_style = `visibility:visible;display:block;left:${mag_select_left + half_width - delta}px;top:${mag_select_top - delta}px;`
+		handle_bottom_style = `visibility:visible;display:block;left:${mag_select_left + half_width - delta}px;top:${mag_select_top + mag_select_height - delta}px;`
 		//
-		handle_top_right_style = `visibilty:visible;display:block;left:${mag_select_left + mag_select_width - delta}px;top:${mag_select_top - delta}px;`
-		handle_right_style = `visibilty:visible;display:block;left:${mag_select_left + mag_select_width - delta}px;top:${mag_select_top + half_height- delta}px;`
-		handle_bottom_right_style = `visibilty:visible;display:block;left:${mag_select_left + mag_select_width - delta}px;top:${mag_select_top + mag_select_height - delta}px;`
+		handle_top_right_style = `visibility:visible;display:block;left:${mag_select_left + mag_select_width - delta}px;top:${mag_select_top - delta}px;`
+		handle_right_style = `visibility:visible;display:block;left:${mag_select_left + mag_select_width - delta}px;top:${mag_select_top + half_height - delta}px;`
+		handle_bottom_right_style = `visibility:visible;display:block;left:${mag_select_left + mag_select_width - delta}px;top:${mag_select_top + mag_select_height - delta}px;`
 	}
 
 	function set_selection_controls(sel) {
@@ -626,27 +617,78 @@
 			select_top = 0
 			select_width = 0
 			select_height = 0
-			selection_style = `visibilty:hidden;display:none;left:0px;top:0px;width:1px;height:1px`
+			selection_style = `visibility:hidden;display:none;left:0px;top:0px;width:1px;height:1px`
 			selection_style += ";cursor:grabbing"
-			handle_top_left_style = `visibilty:hidden;display:none;left:0px;top:0px`
-			handle_left_style = `visibilty:hidden;display:none;left:0px;top:0px`
-			handle_bottom_left_style = `visibilty:hidden;display:none;left:0px;top:0px`
+			handle_top_left_style = `visibility:hidden;display:none;left:0px;top:0px`
+			handle_left_style = `visibility:hidden;display:none;left:0px;top:0px`
+			handle_bottom_left_style = `visibility:hidden;display:none;left:0px;top:0px`
 			//
-			handle_top_style = `visibilty:hidden;display:none;left:0px;top:0px`
-			handle_bottom_style = `visibilty:hidden;display:none;left:0px;top:0px`
+			handle_top_style = `visibility:hidden;display:none;left:0px;top:0px`
+			handle_bottom_style = `visibility:hidden;display:none;left:0px;top:0px`
 			//
-			handle_top_right_style = `visibilty:hidden;display:none;left:0px;top:0px`
-			handle_right_style = `visibilty:hidden;display:none;left:0px;top:0px`
-			handle_bottom_right_style = `visibilty:hidden;display:none;left:0px;top:0px`
+			handle_top_right_style = `visibility:hidden;display:none;left:0px;top:0px`
+			handle_right_style = `visibility:hidden;display:none;left:0px;top:0px`
+			handle_bottom_right_style = `visibility:hidden;display:none;left:0px;top:0px`
 		}
 	}
 
 
 	let g_recovering_resize = false
-	function magnification_recover() {
+	let g_previous_magnification = 1.0
+	let g_recover_selection_mag_after_update = false
+	async function magnification_recover() {
 		g_recovering_resize = true
 		//
+		if ( selection_box.style.visibility === 'visible' ) {
+			g_recover_selection_mag_after_update = [(select_left - doc_left),(select_top - doc_top),select_width,select_height]
+			await tick()
+		}
 	}
+
+
+    afterUpdate(async () => {
+		if ( g_recover_selection_mag_after_update ) {
+			let old_coords = g_recover_selection_mag_after_update
+			g_recover_selection_mag_after_update = false
+			await tick()
+			setTimeout(() => {
+/*
+				var rect = drag_region.getBoundingClientRect();
+					var mouseX = evt.clientX - rect.left;
+					var mouseY = evt.clientY - rect.top;
+					//
+					prev_select_left = (mouseX - 10)/magnification  // magnification
+					prev_select_top = (mouseY - 10)/magnification
+					prev_select_width = 10
+					prev_select_height = 10
+					
+					let mock_evt = {
+						target : handle_box_br,
+						clientX : evt.clientX,
+						clientY : evt.clientY
+					}
+					grab_handle(mock_evt)
+*/
+
+				g_previous_magnification = magnification
+				var rect = drag_region.getBoundingClientRect();
+				let new_coords = [
+					(old_coords[0] + doc_left), 
+					(old_coords[1] + rect.top),
+					(old_coords[2]),
+					(old_coords[3])
+				  ]
+				//
+				prev_select_left = new_coords[0]
+				prev_select_top = new_coords[1]
+				prev_select_width = new_coords[2]
+				prev_select_height = new_coords[3]
+				set_selection_controls(true)
+
+
+			},5)
+		}
+	})
 
 	$: {
 		if ( canvas_changed ) {
@@ -772,8 +814,8 @@
 					var mouseX = evt.clientX - rect.left;
 					var mouseY = evt.clientY - rect.top;
 					//
-					prev_select_left = mouseX - 10  // magnification
-					prev_select_top = mouseY - 10
+					prev_select_left = (mouseX - 10)/magnification  // magnification
+					prev_select_top = (mouseY - 10)/magnification
 					prev_select_width = 10
 					prev_select_height = 10
 					
@@ -866,7 +908,7 @@
 			drag_selection = false
 			handle_selected = false
 			if ( shape_index !== false && shape_index >= 0  ) {
-				selection_style = `visibilty:hidden;display:none;left:0px;top:0px;width:1px;height:1px`
+				selection_style = `visibility:hidden;display:none;left:0px;top:0px;width:1px;height:1px`
 				abeyance = true
 			}
 			await tick()
