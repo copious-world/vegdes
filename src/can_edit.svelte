@@ -217,6 +217,7 @@
 			x_mag = magnification
 			y_mag = magnification
 			draw_control.command("scale_redraw",{"scale" : [x_mag,y_mag]})
+			set_selection_controls((tool === 'select') && selection_on)
 			if ( canvas_mouse && (tool === "select") && selection_on ) {
 				magnification_recover()
 			}
@@ -639,56 +640,14 @@
 	async function magnification_recover() {
 		g_recovering_resize = true
 		//
+		/*
 		if ( selection_box.style.visibility === 'visible' ) {
 			g_recover_selection_mag_after_update = [(select_left - doc_left),(select_top - doc_top),select_width,select_height]
 			await tick()
 		}
+		*/
 	}
 
-
-    afterUpdate(async () => {
-		if ( g_recover_selection_mag_after_update ) {
-			let old_coords = g_recover_selection_mag_after_update
-			g_recover_selection_mag_after_update = false
-			await tick()
-			setTimeout(() => {
-/*
-				var rect = drag_region.getBoundingClientRect();
-					var mouseX = evt.clientX - rect.left;
-					var mouseY = evt.clientY - rect.top;
-					//
-					prev_select_left = (mouseX - 10)/magnification  // magnification
-					prev_select_top = (mouseY - 10)/magnification
-					prev_select_width = 10
-					prev_select_height = 10
-					
-					let mock_evt = {
-						target : handle_box_br,
-						clientX : evt.clientX,
-						clientY : evt.clientY
-					}
-					grab_handle(mock_evt)
-*/
-
-				g_previous_magnification = magnification
-				var rect = drag_region.getBoundingClientRect();
-				let new_coords = [
-					(old_coords[0] + doc_left), 
-					(old_coords[1] + rect.top),
-					(old_coords[2]),
-					(old_coords[3])
-				  ]
-				//
-				prev_select_left = new_coords[0]
-				prev_select_top = new_coords[1]
-				prev_select_width = new_coords[2]
-				prev_select_height = new_coords[3]
-				set_selection_controls(true)
-
-
-			},5)
-		}
-	})
 
 	$: {
 		if ( canvas_changed ) {
