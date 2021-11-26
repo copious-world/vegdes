@@ -577,8 +577,10 @@
 
 
 	function shape_values_to_fields(shape,pars) {
-		//
-		update_color_selections(pars)
+		if ( !pars ) return
+		if ( shape !== 'group' ) {
+			update_color_selections(pars)			
+		}
 		switch ( shape ) {
 			case "rect" : { set_rect_fields(pars); break;}
 			case "ellipse" : { set_ellipse_fields(pars); break;}
@@ -971,6 +973,7 @@ let object_text_size = 32
 	}
 
 	function update_color_selections(pars) {
+		if ( !pars ) return
 		let line_c = pars.line
 		let fill_c = pars.fill
 		//

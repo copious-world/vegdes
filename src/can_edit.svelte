@@ -73,6 +73,7 @@
 				switch ( cmd ) {
 					case "clone" : {
 						let c_shape = can_draw_selected.shape
+						if ( c_shape === "group" ) break;
 						let c_pars = JSON.parse(JSON.stringify(can_draw_selected.pars))
 						let dx = cmd_pars.offset_x
 						let dy = cmd_pars.offset_y
@@ -127,8 +128,10 @@
 						break
 					}
 					case "update_parameter" : {
-						let new_pars = Object.assign(can_draw_selected.pars,cmd_pars)
-						draw_control.update(new_pars)
+						if ( can_draw_selected.shape !== 'group' ) {
+							let new_pars = Object.assign(can_draw_selected.pars,cmd_pars)
+							draw_control.update(new_pars)
+						}
 						break;
 					}
 				}
@@ -235,7 +238,7 @@
 		mouse_y = (canvas_mouse.y/y_mag)
 		if ( drawing ) {
 			if ( can_draw_selected ) {
-				if ( can_draw_selected.shape === 'rect' ) {
+				if ( can_draw_selected.shape === 'rect' || can_draw_selected.shape === 'group' ) {
 					let points = can_draw_selected.pars.points
 					let new_left = mouse_x - points[0]
 					if ( new_left > 0 ) { points[2] = new_left }
@@ -332,7 +335,7 @@
 
 	async function update_selected_object(dx,dy,xchange,ychange,diff_source) {
 		if ( can_draw_selected ) {
-			if ( can_draw_selected.shape === 'rect' ) {
+			if ( can_draw_selected.shape === 'rect' || can_draw_selected.shape === 'group' ) {
 				let points = can_draw_selected.pars.points
 				if ( diff_source ) {
 					if ( diff_source === handle_box_tl) {
@@ -703,6 +706,9 @@
 	async function start_tracking(evt) {
 		turn_off_text()
 		draw_control.command("deselect")
+		if ( tool !== 'select' ) {
+			draw_control.command("remove_top_if_empty_group",{})
+		}
 		await tick()
 		if ( tool === 'rect'  ) {
 			selection_on = false
@@ -740,6 +746,9 @@
 			draw_control.searching({ "mouse_loc" : [canvas_mouse.x/magnification,canvas_mouse.y/magnification] })
 			await tick()
 			selection_changed = (prev_shape_index !== shape_index) || abeyance
+			if ( selection_changed ) {
+				draw_control.command("remove_top_if_empty_group",{ 'except' : shape_index})
+			}
 			if ( (shape_index !== false) && (shape_index >= 0) ) {
 				change_selection(shape_index)
 				//
@@ -767,12 +776,41 @@
 				}
 				set_selection_controls(selection_on)
 			} else {
+				draw_control.command("remove_top_if_empty_group",{})
 				abeyance = false
+				selection_on = false
+				set_selection_controls(false)
+				drawing = true
+				draw_control.add("group",{ "thick" : 1, "line" : "rgba(1,1,1,5.0)", "fill" : "rgba(1,1,1,0.0)", "points" : [mouse_x,mouse_y,10,10] })
+				change_selection("select_top")
+
 				if ( selection_on ) {
+					/*
+
 					var rect = drag_region.getBoundingClientRect();
 					var mouseX = evt.clientX - rect.left;
 					var mouseY = evt.clientY - rect.top;
 					//
+
+					selection_on = false
+					set_selection_controls(false)
+					drawing = true
+					draw_control.add("group",{ "thick" : 1, "line" : "rgba(1,1,1,5.0)", "fill" : "rgba(1,1,1,0.0)", "points" : [mouse_x - 10,mouse_y - 10,10,10] })
+					change_selection("select_top")
+
+					let prev_shape_index = shape_index
+					draw_control.searching({ "mouse_loc" : [mouse_x - 5,mouse_y - 5] })
+					await tick()
+					selection_changed = true
+					if ( (shape_index !== false) && (shape_index >= 0) ) {
+						change_selection(shape_index)
+						//
+						if ( shape_index >= 0 ) {
+							selection_on = true
+						}
+					} 
+
+					selection_on = true
 					prev_select_left = (mouseX - 10)/magnification  // magnification
 					prev_select_top = (mouseY - 10)/magnification
 					prev_select_width = 10
@@ -784,6 +822,7 @@
 						clientY : evt.clientY
 					}
 					grab_handle(mock_evt)
+					*/
 				}
 				set_selection_controls(selection_on)
 			}
@@ -832,7 +871,11 @@
 			save_selection_bounds()
 			if ( (shape_index !== false) && (shape_index >= 0) ) {
 				update_selected_object(dif_x,dif_y,true,true)
+				if ( can_draw_selected.shape === 'group' ) {
+					multi_selection()
+				}
 			} else {
+				update_selected_object(dif_x,dif_y,true,true)
 				multi_selection()
 			}
 		}
@@ -848,7 +891,11 @@
 			save_selection_bounds()
 			if ( (shape_index !== false) && (shape_index >= 0) ) {
 				update_selected_object(dif_x,dif_y,xtrue,ytrue,grabbable_handle)
+				if ( can_draw_selected.shape === 'group' ) {
+					multi_selection()
+				}
 			} else {
+				update_selected_object(dif_x,dif_y,xtrue,ytrue,grabbable_handle)
 				multi_selection()
 			}
 		}
