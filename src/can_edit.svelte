@@ -170,9 +170,10 @@
 
 
 	async function multi_selection() {
+		let rect = can_draw_selected.bounds
 		draw_control.multi_select({ "rect" : [(select_left - doc_left),(select_top - doc_top),select_width,select_height] })
 		await tick()
-		draw_control.command("bounding_paths",{ "list" : multi_selected, "state" : true})
+		draw_control.command("update_selector_group",{ "list" : multi_selected, "state" : true})
 	}
 
 
@@ -357,6 +358,9 @@
 				if ( xchange ) points[2] = select_width
 				if ( ychange ) points[3] = select_height
 				let new_pars = Object.assign(can_draw_selected.pars,{ 'points': points })
+				if ( can_draw_selected.shape === 'group' ) {
+					multi_selection()
+				}
 				parameters_update(new_pars)
 			} else if ( can_draw_selected.shape === 'line' ) {
 				let points = can_draw_selected.pars.points
@@ -750,6 +754,7 @@
 				draw_control.command("remove_top_if_empty_group",{ 'except' : shape_index})
 			}
 			if ( (shape_index !== false) && (shape_index >= 0) ) {
+				can_draw_selected.do_drawing_state = false // do this for all and catch the case required
 				change_selection(shape_index)
 				//
 				if ( shape_index >= 0 ) {
@@ -783,47 +788,9 @@
 				drawing = true
 				draw_control.add("group",{ "thick" : 1, "line" : "rgba(1,1,1,5.0)", "fill" : "rgba(1,1,1,0.0)", "points" : [mouse_x,mouse_y,10,10] })
 				change_selection("select_top")
+				await tick()
+				can_draw_selected.do_drawing_state = true
 
-				if ( selection_on ) {
-					/*
-
-					var rect = drag_region.getBoundingClientRect();
-					var mouseX = evt.clientX - rect.left;
-					var mouseY = evt.clientY - rect.top;
-					//
-
-					selection_on = false
-					set_selection_controls(false)
-					drawing = true
-					draw_control.add("group",{ "thick" : 1, "line" : "rgba(1,1,1,5.0)", "fill" : "rgba(1,1,1,0.0)", "points" : [mouse_x - 10,mouse_y - 10,10,10] })
-					change_selection("select_top")
-
-					let prev_shape_index = shape_index
-					draw_control.searching({ "mouse_loc" : [mouse_x - 5,mouse_y - 5] })
-					await tick()
-					selection_changed = true
-					if ( (shape_index !== false) && (shape_index >= 0) ) {
-						change_selection(shape_index)
-						//
-						if ( shape_index >= 0 ) {
-							selection_on = true
-						}
-					} 
-
-					selection_on = true
-					prev_select_left = (mouseX - 10)/magnification  // magnification
-					prev_select_top = (mouseY - 10)/magnification
-					prev_select_width = 10
-					prev_select_height = 10
-					
-					let mock_evt = {
-						target : handle_box_br,
-						clientX : evt.clientX,
-						clientY : evt.clientY
-					}
-					grab_handle(mock_evt)
-					*/
-				}
 				set_selection_controls(selection_on)
 			}
 		} 
@@ -871,12 +838,8 @@
 			save_selection_bounds()
 			if ( (shape_index !== false) && (shape_index >= 0) ) {
 				update_selected_object(dif_x,dif_y,true,true)
-				if ( can_draw_selected.shape === 'group' ) {
-					multi_selection()
-				}
 			} else {
 				update_selected_object(dif_x,dif_y,true,true)
-				multi_selection()
 			}
 		}
 		if ( handle_selected && grabbable_handle && (evt.buttons == 1) ) {
@@ -891,12 +854,8 @@
 			save_selection_bounds()
 			if ( (shape_index !== false) && (shape_index >= 0) ) {
 				update_selected_object(dif_x,dif_y,xtrue,ytrue,grabbable_handle)
-				if ( can_draw_selected.shape === 'group' ) {
-					multi_selection()
-				}
 			} else {
 				update_selected_object(dif_x,dif_y,xtrue,ytrue,grabbable_handle)
-				multi_selection()
 			}
 		}
 		if ( evt.buttons === 0 ) {
