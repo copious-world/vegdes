@@ -750,11 +750,12 @@
 			draw_control.searching({ "mouse_loc" : [canvas_mouse.x/magnification,canvas_mouse.y/magnification] })
 			await tick()
 			selection_changed = (prev_shape_index !== shape_index) || abeyance
-			if ( selection_changed ) {
-				draw_control.command("remove_top_if_empty_group",{ 'except' : shape_index})
+			if ( selection_changed && (shape_index !== false) && (shape_index >= 0) ) {
+				draw_control.command("remove_top_if_empty_group",{ 'except' : shape_index })
+				await tick()
 			}
 			if ( (shape_index !== false) && (shape_index >= 0) ) {
-				can_draw_selected.do_drawing_state = false // do this for all and catch the case required
+				if ( can_draw_selected ) can_draw_selected.do_drawing_state = false // do this for all and catch the case required
 				change_selection(shape_index)
 				//
 				if ( shape_index >= 0 ) {
