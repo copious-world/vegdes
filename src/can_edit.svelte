@@ -34,6 +34,8 @@
 	let select_width = 0
 	let select_height = 0
 
+	let accrued_selections_list = []
+
     let x_mag = 1.0
     let y_mag = 1.0
 
@@ -73,25 +75,53 @@
 				switch ( cmd ) {
 					case "clone" : {
 						let c_shape = can_draw_selected.shape
-						if ( c_shape === "group" ) break;
-						let c_pars = JSON.parse(JSON.stringify(can_draw_selected.pars))
-						let dx = cmd_pars.offset_x
-						let dy = cmd_pars.offset_y
-						c_pars.points[0] += dx
-						c_pars.points[1] += dy
-						select_left += dx
-						select_top += dy
-						//
-						draw_control.add(c_shape,c_pars)
-						await tick()
-						draw_control.command("select_top")
-						await tick()
-						canvas_changed = true
-						await fetch_zlist()
+						if ( c_shape === "group" )  {
+							//
+							let sel_list = [].concat(can_draw_selected.select_list)
+							sel_list.sort()
+							let selector = sel_list.pop()
+							sel_list.reverse()
+							//
+							let dx = cmd_pars.offset_x
+							let dy = cmd_pars.offset_y
+							//
+							for ( let ith of sel_list ) {
+								draw_control.command("select",{ "select" : ith })
+								await tick()
+								let member_shape = can_draw_selected.shape
+								let mem_pars = JSON.parse(JSON.stringify(can_draw_selected.pars))
+								mem_pars.points[0] += dx
+								mem_pars.points[1] += dy
+								//
+								draw_control.add(member_shape,mem_pars)
+								await tick()
+							}
+							draw_control.command("send_top",{ "select" : selector })
+							await tick()
+							draw_control.command("select_top")
+							await tick()
+							canvas_changed = true
+							await fetch_zlist()
+						} else {
+							let c_pars = JSON.parse(JSON.stringify(can_draw_selected.pars))
+							let dx = cmd_pars.offset_x
+							let dy = cmd_pars.offset_y
+							c_pars.points[0] += dx
+							c_pars.points[1] += dy
+							select_left += dx
+							select_top += dy
+							//
+							draw_control.add(c_shape,c_pars)
+							await tick()
+							draw_control.command("select_top")
+							await tick()
+							canvas_changed = true
+							await fetch_zlist()
+						}
 						break;
 					}
 					case "delete" : {
-						draw_control.command("remove_seleted")
+						draw_control.command("remove_selected")
 						await tick()
 						set_selection_controls(false)
 						await fetch_zlist()
@@ -170,7 +200,6 @@
 
 
 	async function multi_selection() {
-		let rect = can_draw_selected.bounds
 		draw_control.multi_select({ "rect" : [(select_left - doc_left),(select_top - doc_top),select_width,select_height] })
 		await tick()
 		draw_control.command("update_selector_group",{ "list" : multi_selected, "state" : true})
@@ -707,7 +736,15 @@
 
 	let abeyance = false
 
+	/*
+	event.ctrlKey && event.shiftKey && event.altKey	
+	*/
+
 	async function start_tracking(evt) {
+		let shift_key = evt.shiftKey
+		let alt_key = evt.altKey
+		let ctrl_key = evt.ctrlKey
+
 		turn_off_text()
 		draw_control.command("deselect")
 		if ( tool !== 'select' ) {
@@ -773,6 +810,11 @@
 				prev_select_height = sel_bounds[3]
 				set_selection_controls(selection_on)
 				if ( selection_on ) {
+					if ( shift_key ) {    // alt_key  ctrl_key
+						if ( can_draw_selected.shape === "group" && can_draw_selected.role === 'picker' ) {
+							draw_control.command('search_selection_toggle',{ "mouse_loc" : [canvas_mouse.x/magnification,canvas_mouse.y/magnification] })
+						}
+					}
 					let mock_evt = {
 						target : selection_box,
 						clientX : evt.clientX,
@@ -787,7 +829,7 @@
 				selection_on = false
 				set_selection_controls(false)
 				drawing = true
-				draw_control.add("group",{ "thick" : 1, "line" : "rgba(1,1,1,5.0)", "fill" : "rgba(1,1,1,0.0)", "points" : [mouse_x,mouse_y,10,10] })
+				draw_control.add("group",{ "thick" : 1, "line" : "rgba(1,1,1,5.0)", "fill" : "rgba(1,1,1,0.0)", "points" : [mouse_x,mouse_y,10,10], "role" : "picker" })
 				change_selection("select_top")
 				await tick()
 				can_draw_selected.do_drawing_state = true
