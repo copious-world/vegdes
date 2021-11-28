@@ -85,7 +85,11 @@
 							let dx = cmd_pars.offset_x
 							let dy = cmd_pars.offset_y
 							//
+							let exclusions = can_draw_selected.exclusion_list
 							for ( let ith of sel_list ) {
+								if ( exclusions && Array.isArray(exclusions) ) {
+									if ( exclusions.indexOf(ith) >= 0 ) continue
+								}
 								draw_control.command("select",{ "select" : ith })
 								await tick()
 								let member_shape = can_draw_selected.shape
@@ -176,6 +180,38 @@
 		parameter_publisher.command("update_selected",can_draw_selected)
 	}
 
+
+
+	async function group_parameters_update(pars,dif_x,dif_y) {
+		if ( can_draw_selected ) {
+			draw_control.update(pars)
+			await tick()
+			//
+			let sel_list = [].concat(can_draw_selected.select_list)
+			sel_list.sort()
+			let selector = sel_list.pop()
+			sel_list.reverse()
+			//
+			let exclusions = can_draw_selected.exclusion_list
+			for ( let ith of sel_list ) {
+				if ( exclusions && Array.isArray(exclusions) ) {
+					if ( exclusions.indexOf(ith) >= 0 ) continue
+				}
+				draw_control.command("select",{ "select" : ith })
+				await tick()
+				update_selected_object(dif_x,dif_y,false,false,false,false)
+				await tick()
+			}
+			draw_control.command("send_top",{ "select" : selector })
+			await tick()
+			draw_control.command("select_top")
+			await tick()
+			canvas_changed = true
+			await fetch_zlist()
+		}
+	}
+
+
 	async function change_selection(sel_id,prev_shape_index) {
 		if ( typeof sel_id === 'string' ) {
 			draw_control.command("select_top")
@@ -199,10 +235,12 @@
 	}
 
 
-	async function multi_selection() {
+	async function multi_selection(option_key) {
 		draw_control.multi_select({ "rect" : [(select_left - doc_left),(select_top - doc_top),select_width,select_height] })
 		await tick()
-		draw_control.command("update_selector_group",{ "list" : multi_selected, "state" : true})
+		if ( !option_key ) {
+			draw_control.command("update_selector_group",{ "list" : multi_selected, "state" : true})
+		}
 	}
 
 
@@ -363,7 +401,7 @@
 		select_height = prev_select_height
 	}
 
-	async function update_selected_object(dx,dy,xchange,ychange,diff_source) {
+	async function update_selected_object(dx,dy,xchange,ychange,diff_source,option_key) {
 		if ( can_draw_selected ) {
 			if ( can_draw_selected.shape === 'rect' || can_draw_selected.shape === 'group' ) {
 				let points = can_draw_selected.pars.points
@@ -388,9 +426,13 @@
 				if ( ychange ) points[3] = select_height
 				let new_pars = Object.assign(can_draw_selected.pars,{ 'points': points })
 				if ( can_draw_selected.shape === 'group' ) {
-					multi_selection()
+					multi_selection(option_key)
 				}
-				parameters_update(new_pars)
+				if ( option_key && !diff_source && (can_draw_selected.shape === 'group') ) {
+					group_parameters_update(new_pars,dx,dy)
+				} else {
+					parameters_update(new_pars)
+				}
 			} else if ( can_draw_selected.shape === 'line' ) {
 				let points = can_draw_selected.pars.points
 				if ( diff_source ) {
@@ -879,11 +921,8 @@
 			select_top += dif_y
 			selection_positions()
 			save_selection_bounds()
-			if ( (shape_index !== false) && (shape_index >= 0) ) {
-				update_selected_object(dif_x,dif_y,true,true)
-			} else {
-				update_selected_object(dif_x,dif_y,true,true)
-			}
+			let option_key = evt.altKey
+			update_selected_object(dif_x,dif_y,true,true,false,option_key)
 		}
 		if ( handle_selected && grabbable_handle && (evt.buttons == 1) ) {
 			let new_x = evt.clientX
@@ -895,11 +934,7 @@
 			let [xtrue,ytrue] = grabbable_handle._added_size_changer(dif_x,dif_y)
 			selection_positions()
 			save_selection_bounds()
-			if ( (shape_index !== false) && (shape_index >= 0) ) {
-				update_selected_object(dif_x,dif_y,xtrue,ytrue,grabbable_handle)
-			} else {
-				update_selected_object(dif_x,dif_y,xtrue,ytrue,grabbable_handle)
-			}
+			update_selected_object(dif_x,dif_y,xtrue,ytrue,grabbable_handle,false)
 		}
 		if ( evt.buttons === 0 ) {
 			drag_selection = false
