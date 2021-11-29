@@ -56,6 +56,8 @@
 
     let set_drawing = CanDraw.draw_model.set_drawing
 
+	let draw_cautious = false
+
 
 	function object_clone(obj) {
 		let new_obj = JSON.parse(JSON.stringify(obj))
@@ -301,9 +303,17 @@
 
 	let mouse_x = 0
 	let mouse_y = 0
+	let prev_mouse_x = 0
+	let prev_mouse_y = 0
 	$: if ( draw_control && canvas_mouse ) {
+		//
 		mouse_x = (canvas_mouse.x/x_mag)
 		mouse_y = (canvas_mouse.y/y_mag)
+		let draw_delta_x = canvas_mouse.x - prev_mouse_x
+		let draw_delta_y = canvas_mouse.y - prev_mouse_y
+		prev_mouse_x = canvas_mouse.x
+		prev_mouse_y = canvas_mouse.y
+		//
 		if ( drawing ) {
 			if ( can_draw_selected ) {
 				if ( can_draw_selected.shape === 'rect' || can_draw_selected.shape === 'group' ) {
@@ -323,10 +333,7 @@
 					let new_pars = Object.assign(can_draw_selected.pars,{ 'points': points })
 					parameters_update(new_pars)
 				} else if ( (can_draw_selected.shape === 'polygon') || (can_draw_selected.shape === 'star') ) {
-					let points = can_draw_selected.pars.points
-					let new_left = mouse_x - points[0]
-					let new_top = mouse_y - points[1]
-					if ( new_left > 0 ) { points[2] = Math.sqrt(new_left*new_left + new_top*new_top) }
+					let points = draw_cautious.change_star_radius(can_draw_selected,canvas_mouse,draw_delta_x,draw_delta_y)
 					let new_pars = Object.assign(can_draw_selected.pars,{ 'points': points })
 					parameters_update(new_pars)
 				} else if ( can_draw_selected.shape === 'line' ) { 
@@ -547,10 +554,11 @@
 							break;
 						}
 						case 'star' : {
-							if ( xchange|| ychange ) {
-								let sw = dx/2
-								let sh = dy/2
-								points[2] = Math.sqrt(sw*sw + sh*sh)
+							if ( pure_mouse ) {
+								points[0] = (select_left - doc_left) + select_width/2
+								points[1] = (select_top - doc_top) +  select_height/2
+								let ref_x = { 'x' : (select_left - doc_left), 'y' : (select_top - doc_top) } 
+								points = draw_cautious.change_star_radius(can_draw_selected,ref_x,dx,dy)
 							}
 							break;
 						}
@@ -726,8 +734,9 @@
 		*/
 	}
 
-
+	let pure_mouse = false
 	$: {
+		pure_mouse = Object.assign({},canvas_mouse)
 		if ( canvas_changed ) {
 			canvas_changed = false
 			prev_doc_left = doc_left
@@ -736,6 +745,7 @@
 				g_recovering_resize = false
 				setTimeout(() => {
 					if ( can_draw_selected ) {
+						if ( can_draw_selected.shape === 'star' ) return
 						selection_on = false
 						let points = can_draw_selected.pars.points
 						canvas_mouse.x = points[0]*magnification + 2
@@ -1103,7 +1113,7 @@
 
 </script>
 <div bind:this={drag_region} on:mousedown={start_tracking} on:mouseup={stop_tracking} style="height:inherit;width:inherit" on:mousemove={reposition} on:mouseup={stop_drags}>
-	<CanDraw bind:selected={can_draw_selected} bind:mouse_to_shape={shape_index} bind:multi_select={multi_selected} bind:canvas_mouse={canvas_mouse}  bind:canvas_changed={canvas_changed} bind:z_list={z_list} {height} {width} {doc_left} {doc_top} {doc_width} {doc_height}  />
+	<CanDraw bind:internal_draw={draw_cautious} bind:selected={can_draw_selected} bind:mouse_to_shape={shape_index} bind:multi_select={multi_selected} bind:canvas_mouse={canvas_mouse}  bind:canvas_changed={canvas_changed} bind:z_list={z_list} {height} {width} {doc_left} {doc_top} {doc_width} {doc_height}  />
 	<div bind:this={selection_box} class="selection-box" style={selection_style} on:mousedown|capture|preventDefault|stopPropagation={grab_selection} >&nbsp</div>
 	<div bind:this={handle_box_tl} class="handle-box top-left-c" style={handle_top_left_style} on:mousedown|capture|preventDefault|stopPropagation={grab_handle} >&nbsp</div>
 	<div bind:this={handle_box_top} class="handle-box top-c"  style={handle_top_style} on:mousedown|capture|preventDefault|stopPropagation={grab_handle} >&nbsp</div>
