@@ -868,10 +868,12 @@ let object_text_size = 32
 	}
 
 	function update_sides(ev) {
+		add_shape_extras('polygon',g_current_parameters.parameters)
 		commander.command("update_parameter",{ "sides": object_sides } )
 	}
 
 	function update_star_points(ev) {
+		add_shape_extras('star',g_current_parameters.parameters)
 		commander.command("update_parameter",{ 
 			"star_points": object_points, 
 			"pointiness" : object_pointiness,
@@ -962,6 +964,11 @@ let object_text_size = 32
 
 	let picker_starter_stroke = object_stroke
 	let picker_starter_fill = object_fill
+
+	$: {
+		picker_starter_stroke = object_stroke
+		picker_starter_fill = object_fill
+	}
 
 	let guass_blur_level = 0;
 	function  blurry_changed(event) {

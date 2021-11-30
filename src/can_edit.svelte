@@ -134,12 +134,40 @@
 						break;
 					}
 					case "to_top" : {
-						draw_control.command("send_top",{ "select" : false })
+						if ( can_draw_selected.role !== 'picker' ) {
+							draw_control.command("send_top",{ "select" : false })							
+						} else {
+							let sel_list = [].concat(can_draw_selected.select_list)
+							let exclusions = can_draw_selected.exclusion_list
+							let travelers = sel_list.filter(trvlr => {
+								if ( exclusions.indexOf(trvlr) >= 0 ) return false
+								return true
+							})
+							draw_control.command("send_top",{ "select" : travelers })
+							await tick()
+							draw_control.command("select_top")
+							await tick()
+							canvas_changed = true
+						}
 						await fetch_zlist()
 						break;
 					}
 					case "to_bottom" : {
-						draw_control.command("send_bottom",{ "select" : false })
+						if ( can_draw_selected.role !== 'picker' ) {
+							draw_control.command("send_bottom",{ "select" : false })							
+						} else {
+							let sel_list = [].concat(can_draw_selected.select_list)
+							let exclusions = can_draw_selected.exclusion_list
+							let travelers = sel_list.filter(trvlr => {
+								if ( exclusions.indexOf(trvlr) >= 0 ) return false
+								return true
+							})
+							draw_control.command("send_bottom",{ "select" : travelers })
+							await tick()
+							draw_control.command("select_top")
+							await tick()
+							canvas_changed = true
+						}
 						await fetch_zlist()
 						break;
 					}
@@ -862,20 +890,44 @@
 				prev_select_height = sel_bounds[3]
 				set_selection_controls(selection_on)
 				if ( selection_on ) {
-					if ( shift_key ) {    // alt_key  ctrl_key
-						if ( can_draw_selected.shape === "group" && can_draw_selected.role === 'picker' ) {
-							draw_control.command('search_selection_toggle',{ "mouse_loc" : [canvas_mouse.x/magnification,canvas_mouse.y/magnification] })
+					if ( shift_key ) {	// alt_key  ctrl_key
+						if ( (can_draw_selected.shape === "group") && (can_draw_selected.role === 'picker') ) {
+							draw_control.command('search_selection_toggle',{
+								"mouse_loc" : [canvas_mouse.x/magnification,canvas_mouse.y/magnification] 
+							})
+						} else if ( selection_changed ) {
+							let in_selected = accrued_selections_list.indexOf(shape_index)
+							if ( in_selected >= 0 ) {
+								accrued_selections_list.splice(in_selected,1)
+							} else {
+								accrued_selections_list.push(shape_index)
+								if ( prev_shape_index !== false ) {
+									in_selected = accrued_selections_list.indexOf(prev_shape_index)
+									if ( in_selected < 0 ) {
+										accrued_selections_list.push(prev_shape_index)
+									}
+								}
+							}
 						}
+						//draw_control.add("bounding_group",{ "thick" : 1, "line" : "rgba(1,1,1,5.0)", "fill" : "rgba(1,1,1,0.0)", "points" : [mouse_x,mouse_y,10,10], "role" : "picker", "selections" : accrued_selections_list })
+					} else {
+						accrued_selections_list = []
 					}
-					let mock_evt = {
-						target : selection_box,
-						clientX : evt.clientX,
-						clientY : evt.clientY
-					}
-					grab_selection(mock_evt)
+					if ( accrued_selections_list.length <= 1 ) {
+						let mock_evt = {
+							target : selection_box,
+							clientX : evt.clientX,
+							clientY : evt.clientY
+						}
+						grab_selection(mock_evt)
+					} else {
+						console.log(accrued_selections_list)
+					}	// // // // // // // // // 
 				}
 				set_selection_controls(selection_on)
 			} else {
+				accrued_selections_list = []
+				//
 				draw_control.command("remove_top_if_empty_group",{})
 				abeyance = false
 				selection_on = false
@@ -885,7 +937,7 @@
 				change_selection("select_top")
 				await tick()
 				can_draw_selected.do_drawing_state = true
-
+				//
 				set_selection_controls(selection_on)
 			}
 		} 
