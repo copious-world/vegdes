@@ -64,6 +64,21 @@
 		return new_obj
 	}
 
+	function remove_max(ilist) {
+		let j = -1
+		let max = -1000
+		let n = ilist.length
+		for ( let i = 0; i < n; i++ ) {
+			let m = ilist[i]
+			if ( m > max ) {
+				max = m
+				j = i
+			}
+		}
+		ilist.splice(j,1)
+		return [ilist,max]
+	}
+
 
     g_commander.subscribe(async (command) => {
         //
@@ -143,11 +158,23 @@
 								if ( exclusions.indexOf(trvlr) >= 0 ) return false
 								return true
 							})
+							//
+							let n = travelers.length
 							draw_control.command("send_top",{ "select" : travelers })
 							await tick()
 							draw_control.command("select_top")
 							await tick()
 							canvas_changed = true
+
+							let ii = []
+							let m = draw_cautious.z_top()
+							for ( let i = 0; i < n; i++ ) {
+								ii.push(m)
+								m--
+							}
+							can_draw_selected.select_list = ii
+
+
 						}
 						await fetch_zlist()
 						break;
@@ -157,15 +184,33 @@
 							draw_control.command("send_bottom",{ "select" : false })							
 						} else {
 							let sel_list = [].concat(can_draw_selected.select_list)
+							let [sels,max] = remove_max(sel_list)
+							sel_list = sels
 							let exclusions = can_draw_selected.exclusion_list
 							let travelers = sel_list.filter(trvlr => {
 								if ( exclusions.indexOf(trvlr) >= 0 ) return false
 								return true
 							})
+							let n = travelers.length
 							draw_control.command("send_bottom",{ "select" : travelers })
 							await tick()
 							draw_control.command("select_top")
 							await tick()
+							let ii = []
+							for ( let i = 0; i < n; i++ ) ii.push(i)
+							ii.push(max)
+							can_draw_selected.select_list = ii
+							let old_exclusions = can_draw_selected.exclusion_list
+							if ( Array.isArray(old_exclusions) && (old_exclusions.length > 0) ) {
+								for ( let i = 0; i < n; i++ ) {
+									let v = old_exclusions[i]
+									while ( v >= travelers[0] ) {
+										travelers.shift()
+										n = travelers.length
+									}
+									can_draw_selected.exclusion_list[i] = (v + n)
+								}
+							}
 							canvas_changed = true
 						}
 						await fetch_zlist()
