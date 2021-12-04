@@ -23,6 +23,7 @@
     export let grid_interval = 50
 	export let tool = "select"
 	export let tool_parameters = false
+	export let component_defaults = false
 	export let shape = "rect"
 
 	export let selected_objects
@@ -773,6 +774,7 @@
 			selection_positions()
 		} else {
 			selection_active = false
+			selected_objects = false
 			select_left = 0
 			select_top = 0
 			select_width = 0
@@ -858,6 +860,21 @@
 		return false
 	}
 
+	function is_component(tool) {
+		if ( tool === "component" ) {
+			return true
+		}  // maybe for other line types as well
+		return false
+	}
+
+
+	function is_connector(tool) {
+		if ( tool === "connector" ) {
+			return true
+		}  // maybe for other line types as well
+		return false
+	}
+
 
 	let abeyance = false
 
@@ -904,6 +921,35 @@
 			tool_parameters.parameters.points = [mouse_x,mouse_y,mouse_x+2,mouse_y+2]
 			let pars = object_clone(tool_parameters.parameters)
 			draw_control.add(tool_parameters.shape,pars)
+			change_selection("select_top")
+		} else if ( is_component(tool) ) {
+			selection_on = false
+			set_selection_controls(false)
+			drawing = true
+			let cpars = false
+			if ( component_defaults ) {
+				cpars = component_defaults.parameters
+			} else {
+				cpars = tool_parameters.parameters
+			}
+			draw_control.add("rect",{
+				"role" : "component",
+				"thick" : cpars.thick, 
+				"line" : cpars.line, 
+				"fill" : cpars.fill,
+				"line_dash" : cpars.line_dash,
+				"points" : [mouse_x,mouse_y,2,2] })
+			change_selection("select_top")
+		} else if ( is_connector(tool) ) {
+			selection_on = false
+			set_selection_controls(false)
+			drawing = true
+			draw_control.add("line",{
+				"role" : "connector",
+				"thick" : tool_parameters.parameters.thick, 
+				"line" : tool_parameters.parameters.line, 
+				"fill" : tool_parameters.parameters.fill,
+				"points" : [mouse_x,mouse_y,2,2] })
 			change_selection("select_top")
 		} else if ( tool === 'select' ) {
 			selection_on = !selection_on

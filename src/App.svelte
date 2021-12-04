@@ -16,6 +16,9 @@
 	import SaveSVG from './dialogs/svg-save.svelte'
 	import DocProps from './dialogs/doc-properties.svelte'
 	import EditPrefs from './dialogs/editor-preferences.svelte'
+	//
+	import ConnectorEditor from './windows/connectors.svelte'
+	import ComponentEditor from './windows/components.svelte'
 
 	import {db_startup, db_store} from '../utils/db-utils'
 
@@ -62,6 +65,8 @@
 	all_window_scales.push(window_scale)
 	all_window_scales.push(window_scale)
 	all_window_scales.push(window_scale)
+	all_window_scales.push(window_scale)
+	all_window_scales.push(window_scale)
 	//
 	onMount(async () => {
 		//
@@ -100,6 +105,17 @@
 
 
 	let g_current_selection_object = false
+	let g_component_defaults = {
+			"shape" : "component",
+			"tool"  : "component",
+			"parameters" : {
+				"thick" : 3, 
+				"line_dash" : [2, 1, 1, 1, 1, 2],
+				"line" : "rgba(0,0,0,1.0)", 
+				"fill" : "rgba(170,170,170,0.75)"
+			}
+		}
+
 
 
 	let magnification = 100
@@ -139,6 +155,7 @@
 		'ruler_interval' : 50,
 		'tool' : "select",
 		'tool_parameters' : g_current_parameters,
+		'component_defaults' : g_component_defaults,
 		'shape' : 'rect'
 	}
 
@@ -193,6 +210,9 @@
 	let g_current_tool = "select"
 	let g_current_shape = "rect"
 
+	let g_selected_component = false
+	let g_selected_connector = false
+
 	$: edit_props = {
 		'width' : g_calc_doc_width,
 		'height' : g_calc_doc_height,
@@ -206,6 +226,7 @@
 		'ruler_interval' : INTERVAL_ruler,
 		'tool' : g_current_tool,
 		'tool_parameters' : g_current_parameters,
+		'component_defaults' : g_component_defaults,
 		'shape' : g_current_shape
 	}
 
@@ -217,10 +238,40 @@
 	}
 	$: {
 		free_mode = false
+		if ( (g_current_selection_object !== false ) 
+				&& (['component','connector'].indexOf(g_current_selection_object.role) < 0)   ) {
+			g_selected_component = false
+			g_selected_connector = false
+		} else if ( g_current_selection_object === false ) {
+			g_selected_component = false
+			g_selected_connector = false
+		}
+
 		if (( g_current_selection_object !== false ) && g_selection_changed ) {
+			//
 			g_current_shape = g_current_selection_object.shape
 			set_selection_mode(g_current_tool)
 			reset_free_mode()
+
+			// id of selected object
+			//id_selected = g_current_selection_object.id ? g_current_selection_object.id : id_selected
+
+			if ( (g_current_selection_object.role !== undefined) && (g_current_selection_object.role) ) {
+				if ( g_current_selection_object.role === 'component' ) {
+					g_selected_component = g_current_selection_object
+					g_selected_connector = false
+				} else if ( g_current_selection_object.role === 'connector'  ) {
+					g_selected_connector = g_current_selection_object
+					g_selected_component = false
+				} else {
+					g_selected_component = false
+					g_selected_connector = false
+				}
+			} else {
+				g_selected_component = false
+				g_selected_connector = false
+			}
+			//
 		}
 	}
 
@@ -277,6 +328,12 @@
 			case 'select': {
 				selection_mode = false
 				g_current_shape = ( g_current_selection_object ) ? g_current_selection_object.shape : false
+				if ( g_current_selection_object.role === 'component' ) {
+					g_current_shape = 'component'
+				}
+				if ( g_current_selection_object.role === 'connector' ) {
+					g_current_shape = 'connector'
+				}
 				tool_cursor = "default"
 				break
 			}
@@ -335,10 +392,10 @@
 				tool_cursor = "text"
 				break
 			}
-			case 'load': {
+			case 'component': {
 				selection_mode = true
-				picture_selected = true
-				tool_cursor = "default"
+				component_selected = true
+				tool_cursor = `url(./images/component-tool.svg), auto`
 				break
 			}
 			case 'eye_dropper': {
@@ -412,6 +469,7 @@
 	let object_stroke = "rgba(0,0,0,1.0)"
 	let object_fill = "rgba(100,200,220,0.9)"
 	let object_line_thick = 2
+	let object_line_dash = []
 
 
 	g_select_parameters.subscribe(async (command) => {
@@ -469,6 +527,7 @@
 		'object_ry': object_ry,
 
 		'object_line_thick' : object_line_thick,
+		'object_line_dash' : object_line_dash,
 
 		'object_points': object_points,
 		'object_sides': object_sides,
@@ -498,7 +557,7 @@
 	let path_names = ["x", "y"]
 	let polygon_names = ["x", "y", "r", "sides"]
 	let star_names = ["x", "y", "r", "points", "pointiness", "radial-shift", "radius-multiplier"]
-	let component_names = ["x", "y"]
+	let component_names = ["x", "y", "w", "h"]
 	let group_names = ["x", "y", "group", "relative", "align-left", "align-center", "align-right", "align-top", "align-middle", "align-bottom"]
 	let grouped_names = ["x", "y", "label", "ungroup" ]
 	let curve_names = ["x1", "y1", "x2", "y2", "curve", "clone-node", "delete-node", "subpath", "add-subpath" ]
@@ -514,6 +573,7 @@
 		"star" : star_names,
 		"text" : text_names,
 		"component" : component_names,
+		"connector" : connector_names,
 		"path" : path_names,
 		"bezier" : curve_names,
 		"quadratic" : quadratic_names
@@ -578,6 +638,11 @@
 
 	function shape_values_to_fields(shape,pars) {
 		if ( !pars ) return
+		if ( pars.id ) {
+			id_selected = pars.id
+		} else {
+			id_selected = ""
+		}
 		if ( shape !== 'group' ) {
 			update_color_selections(pars)			
 		}
@@ -599,6 +664,13 @@
 	function selection_mode_var(var_name) {
 		//
 		if ( (selection_mode || free_mode || g_current_shape) && (var_name == "rotate") ) return true
+
+		if ( var_name === 'component-properties' ) {
+			if ( g_current_shape === 'component' ) return true
+		}
+		if ( var_name === 'connector-properties' ) {
+			if ( g_current_shape === 'connector' ) return true
+		}
 
 		if ( free_mode ) {
 			//console.log("selection_mode_var " + g_current_shape)
@@ -680,9 +752,11 @@
 					}
 				}
 			}
+			/*
 			case "connector": {
 				return "line"
 			}
+			*/
 			case "path": {
 				if ( g_regular_shape ) {
 					return "line" //"square"
@@ -816,6 +890,7 @@
 				"tool"  : g_current_tool,
 				"parameters" : {
 					"thick" : object_line_thick, 
+					"line_dash" : object_line_dash,
 					"line" : object_stroke, 
 					"fill" : object_fill, 
 					"points" : points_array,
@@ -836,6 +911,21 @@ let object_text_align_center = false
 let object_text_align_right = false
 let object_text_size = 32
 */
+
+	let tmp_val = ""
+	let tmp_sel_obj = false
+	let id_timeout = null
+	async function update_id(evt) {
+		tmp_val = id_selected
+		tmp_sel_obj = g_current_selection_object
+		if ( id_timeout !== null ) {
+			clearTimeout(id_timeout)
+		}
+		id_timeout = setTimeout(() => {
+			tmp_sel_obj.pars.id = tmp_val
+		},2000)
+		//
+	}
 
 
 	function update_points(p_name) {
@@ -1162,6 +1252,7 @@ let object_text_size = 32
 
 	}
 
+
 	function toggle_float(float_name) {
 
 		switch ( float_name ) {
@@ -1176,6 +1267,14 @@ let object_text_size = 32
 			case "layers-manager" : {
 				start_floating_window(2);
 				break;
+			}
+			case "component-editor" : {
+				start_floating_window(3);
+				break
+			}
+			case "connection-editor" : {
+				start_floating_window(4);
+				break
 			}
 			default: {
 				break;
@@ -1251,8 +1350,8 @@ let object_text_size = 32
 	<div class="v-left-menu-button" on:click={ (evt) => { g_selector = (mode_toggle === 'text'); set_selection_mode('text') } } >
 		<img class="v-left-menu-item"  src="./images/text.svg" alt="text" title="text" />
 	</div>
-	<div class="v-left-menu-button" on:click={ (evt) => { g_selector = (mode_toggle === 'load'); set_selection_mode('load') } } >
-		<img class="v-left-menu-item"  src="./images/image.svg" alt="load" title="load" />
+	<div class="v-left-menu-button" on:click={ (evt) => { g_selector = (mode_toggle === 'component'); set_selection_mode('component') } } >
+		<img class="v-left-menu-item"  src="./images/image.svg" alt="component" title="component" />
 	</div>
 	<div class="v-left-menu-button" on:click={ (evt) => { g_selector = (mode_toggle === 'connector'); set_selection_mode('connector') } } >
 		<img class="v-left-menu-item"  src="./images/conn.svg" alt="connector" title="connector" />
@@ -1288,7 +1387,7 @@ let object_text_size = 32
 	<span style="color:white">|</span>
 
 	{#if (selection_mode || g_free_mode) }
-		<span class="top-text" >id:</span><input type=text  class="bottom-input"  bind:value={id_selected} />
+		<span class="top-text" >id:</span><input type=text  class="bottom-input"  bind:value={id_selected} on:keyup={update_id} />
 		<span class="top-text" >class:</span><input type=text  class="bottom-input" bind:value={class_selected} />
 	{/if}
 
@@ -1519,6 +1618,14 @@ let object_text_size = 32
 		<img class="bottom-menu-item"  src="./images/blur.svg" alt="gaussian blur" title="gaussian blur" />
 	</div>
 	<input class="bottom-input" type=number bind:value={guass_blur_level} min="0" max="100" on:change={blurry_changed}>
+	
+	{#if (g_selector || g_free_mode) && selection_mode_var('component-properties') }
+		<button class="bottom-button" on:click={ () => { toggle_float("component-editor") } }  >component properties</button>
+	{/if}
+	{#if (g_selector || g_free_mode) && selection_mode_var('connector-properties') }
+		<button class="bottom-button" on:click={ () => { toggle_float("connection-editor") } } >connector properties</button>
+	{/if}
+
 </div>
 
 <div bind:this={g_canvas_system} class="canvas-system" on:scroll={scroll_rulers}>
@@ -1664,6 +1771,13 @@ let object_text_size = 32
 	Manage Layers
 </FloatWindow>
 
+<FloatWindow title="Component Properties"  index={3} scale_size_array={all_window_scales[3]} >
+	<ComponentEditor bind:selected_component={g_selected_component} />
+</FloatWindow>
+
+<FloatWindow title="Connector Properties"  index={4} scale_size_array={all_window_scales[4]} >
+	<ConnectorEditor bind:selected_connector={g_selected_connector} />
+</FloatWindow>
 
 
 
@@ -1753,6 +1867,17 @@ let object_text_size = 32
 		visibility: inherit;
 		cursor: pointer;
 		color:darkorchid;
+	}
+
+	.bottom-button {
+		visibility: inherit;
+		cursor: pointer;
+		background-color: lightgrey;
+		font: bold;
+		color: darkgreen;
+		font-size: 75%;
+		border: solid 1px rgb(61, 97, 97);
+		box-shadow: 2px 2px rgba(116, 133, 150, 0.596), -0.45em 0 .1em rgb(54, 88, 88);
 	}
 
 	.color-box {
