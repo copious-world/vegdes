@@ -59,6 +59,15 @@
 
 	let draw_cautious = false
 
+	function dist(X,Y) {
+		let [x1,y1] = X
+		let [x2,y2] = Y
+
+		let delta_x = (x1 - x2)
+		let delta_y = (y1 - y2)
+		let D = Math.sqrt(delta_x*delta_x + delta_y*delta_y)
+		return D
+	}
 
 	function object_clone(obj) {
 		let new_obj = JSON.parse(JSON.stringify(obj))
@@ -78,6 +87,27 @@
 		}
 		ilist.splice(j,1)
 		return [ilist,max]
+	}
+
+	function close_to_rect(a_rect,x,y) {
+		if ( ( x >= a_rect.x ) && ( y >= a_rect.y ) 
+				&& ( x <= a_rect.x + a_rect.width ) && ( y <= a_rect.y + a_rect.height ) ) {
+			return true
+		}
+		//
+		if ( dist([x,y],[a_rect.x,a_rect.y]) < 5 ) {
+			return true
+		}
+		if ( dist([x,y],[(a_rect.x1 + a_rect.width),a_rect.y]) < 5 ) {
+			return true
+		}
+		if ( dist([x,y],[a_rect.x,(a_rect.new_y + a_rect.height)]) < 5 ) {
+			return true
+		}
+		if ( dist([x,y],[(a_rect.x + a_rect.width),(a_rect.y + a_rect.height)]) < 5 ) {
+			return true
+		}
+		return false
 	}
 
 
@@ -444,6 +474,11 @@
 	let handle_right_style = `visibility:hidden;display:none;left:0px;top:0px`
 	let handle_bottom_right_style = `visibility:hidden;display:none;left:0px;top:0px`
 
+
+
+	let handle_rotator_style = `visibility:hidden;display:none;left:0px;top:0px`
+	let rotator_center_style = `visibility:hidden;display:none;left:0px;top:0px`
+
 	let prev_select_left = 300
 	let prev_select_top = 200
 	let prev_select_width = 30
@@ -664,6 +699,29 @@
 	}
 
 
+	function circular_update_selected_object(dx,dy,xchange,ychange,diff_source,option_key) {
+		if ( can_draw_selected.shape === 'line' ) {
+			let points = can_draw_selected.pars.points  // preserve orientation....
+			points[0] = rotator_center_left - doc_left
+			points[1] = rotator_center_top - doc_top
+			points[2] = rotator_tracker_left - doc_left
+			points[3] = rotator_tracker_top - doc_top
+			//
+	/*
+	let rotator_center_left = 0		// fixed
+	let rotator_center_top = 0
+	let rotator_tracker_left = 0	// in motion
+	let rotator_tracker_top = 0
+	*/	
+			let disposition = calc_line_disposition(points)
+			can_draw_selected.disposition = disposition
+
+			let new_pars = Object.assign(can_draw_selected.pars,{ 'points': points })
+			parameters_update(new_pars)
+		}
+	}
+
+
 	let text_box_style  = "visibility:hidden;display:none;left:0px;top:0px"
 	let text_box_field = false
 	let text_box_field_style = "visibility:inherit;width:inherit;heightinherit"
@@ -723,7 +781,7 @@
 
 
 
-	/*
+/*
 	let [x,y] = pars.points
             let text = pars.text
             //
@@ -767,6 +825,86 @@
 		handle_bottom_right_style = `visibility:visible;display:block;left:${mag_select_left + mag_select_width - delta}px;top:${mag_select_top + mag_select_height - delta}px;`
 	}
 
+
+	// 
+	let rotator_center_left = 0		// fixed
+	let rotator_center_top = 0
+	let rotator_tracker_left = 0	// in motion
+	let rotator_tracker_top = 0
+	function selection_circular_positions() {
+		//
+		let [x1,y1,x2,y2] = [
+			Math.min(rotator_tracker_left,rotator_center_left),
+			Math.min(rotator_tracker_top,rotator_center_top),
+			Math.max(rotator_tracker_left,rotator_center_left),
+			Math.max(rotator_tracker_top,rotator_center_top)
+		]
+		// set globals
+		select_left = x1
+		select_top = y1
+		select_width = (x2 - x1)
+		select_height = (y2 - y1)
+
+		//
+		let mag_rt_left = rotator_tracker_left*magnification
+		let mag_rt_top = rotator_tracker_top*magnification
+		let mag_rc_left = rotator_center_left*magnification
+		let mag_rc_top = rotator_center_top*magnification
+		handle_rotator_style = `visibility:visible;display:block;left:${mag_rt_left}px;top:${mag_rt_top}px;`
+		rotator_center_style = `visibility:visible;display:block;left:${mag_rc_left}px;top:${mag_rc_top}px;`
+
+		selection_positions()
+	}
+
+	function fix_rotation_center(tracker,center_fixed,move_ref,center_ref) {
+		//
+		if ( can_draw_selected.shape === 'line' ) {
+			let points = can_draw_selected.pars.points
+			let lc_x = points[0] + doc_left
+			let lc_y = points[1] + doc_top
+			let move_ref_rect = { x :  move_ref.offsetLeft, y : move_ref.offsetTop, width: move_ref.offsetWidth, height: move_ref.offsetHeight}
+			if ( !close_to_rect(move_ref_rect,lc_x,lc_y) ) {
+				rotator_center_left = lc_x
+				rotator_center_top = lc_y
+				let x = move_ref.offsetLeft
+				let y = move_ref.offsetTop
+				x += move_ref.offsetWidth/2
+				y += move_ref.offsetHeight/2
+				let w = 10	// as defined
+				let h = 10
+				rotator_tracker_left = (x - w/2)
+				rotator_tracker_top = (y - h/2)
+				return
+			}
+			//
+		}
+
+		//
+		{	// always based on the center ... so, the selection rect center or a handle center
+			let x = center_ref.offsetLeft
+			let y = center_ref.offsetTop
+			x += center_ref.offsetWidth/2
+			y += center_ref.offsetHeight/2
+			let w = center_fixed.offsetWidth
+			let h = center_fixed.offsetHeight
+			rotator_center_left = (x - w)
+			rotator_center_top = (y - h)
+		}
+		//
+		{
+			let x = move_ref.offsetLeft
+			let y = move_ref.offsetTop
+			x += move_ref.offsetWidth/2
+			y += move_ref.offsetHeight/2
+			let w = tracker.offsetWidth
+			let h = tracker.offsetHeight
+			rotator_tracker_left = (x - w/2)
+			rotator_tracker_top = (y - h/2)
+		}
+		//
+	}
+
+
 	function set_selection_controls(sel) {
 		if ( sel ) {
 			selection_active = true && (shape_index !== false) && (shape_index >= 0)
@@ -779,6 +917,7 @@
 			select_top = 0
 			select_width = 0
 			select_height = 0
+			// rectangles
 			selection_style = `visibility:hidden;display:none;left:0px;top:0px;width:1px;height:1px`
 			selection_style += ";cursor:grabbing"
 			handle_top_left_style = `visibility:hidden;display:none;left:0px;top:0px`
@@ -791,6 +930,11 @@
 			handle_top_right_style = `visibility:hidden;display:none;left:0px;top:0px`
 			handle_right_style = `visibility:hidden;display:none;left:0px;top:0px`
 			handle_bottom_right_style = `visibility:hidden;display:none;left:0px;top:0px`
+
+			// Rotator
+			handle_rotator_style = `visibility:hidden;display:none;left:0px;top:0px`
+			rotator_center_style = `visibility:hidden;display:none;left:0px;top:0px`
+
 		}
 	}
 
@@ -1059,6 +1203,9 @@
 	}
 
 
+	let handle_rotator = false
+	let rotator_center = false
+
 	let handle_selected = false
 	let grabbable_handle = false
 
@@ -1072,12 +1219,23 @@
 			selection_mouse.y = new_y
 			select_left += dif_x
 			select_top += dif_y
-			selection_positions()
+			selection_positions()    // set style left, top, width, height
 			save_selection_bounds()
 			let option_key = evt.altKey
 			update_selected_object(dif_x,dif_y,true,true,false,option_key)
-		}
-		if ( handle_selected && grabbable_handle && (evt.buttons == 1) ) {
+		} else if ( handle_selected && (grabbable_handle === handle_rotator) && (evt.buttons == 1) ) {
+			// rotation
+			let new_x = evt.clientX
+			let new_y = evt.clientY
+			let dif_x = (new_x - selection_mouse.x)/magnification
+			let dif_y = (new_y - selection_mouse.y)/magnification
+			selection_mouse.x = new_x
+			selection_mouse.y = new_y
+			grabbable_handle._added_size_changer(dif_x,dif_y)
+			selection_circular_positions()    // set style left, top, width, height
+			save_selection_bounds()
+			circular_update_selected_object(dif_x,dif_y,true,true,grabbable_handle,false)
+		} else if ( handle_selected && grabbable_handle && (evt.buttons == 1) ) {
 			let new_x = evt.clientX
 			let new_y = evt.clientY
 			let dif_x = (new_x - selection_mouse.x)/magnification
@@ -1085,7 +1243,7 @@
 			selection_mouse.x = new_x
 			selection_mouse.y = new_y
 			let [xtrue,ytrue] = grabbable_handle._added_size_changer(dif_x,dif_y)
-			selection_positions()
+			selection_positions()    // set style left, top, width, height
 			save_selection_bounds()
 			update_selected_object(dif_x,dif_y,xtrue,ytrue,grabbable_handle,false)
 		}
@@ -1113,122 +1271,180 @@
 				await fetch_zlist()
 			}
 		}
+		handle_rotator_style = `visibility:hidden;display:none;left:0px;top:0px`
+		rotator_center_style = `visibility:hidden;display:none;left:0px;top:0px`
 	}
 
 
 	function grab_handle(evt) {
+		//
+		let shift_key = evt.shiftKey
+		if ( shift_key ) {
+			console.log("SHIFT KEY")
+			shift_key = (can_draw_selected.shape === 'line')
+		}
+		//
 		handle_selected = true
 		selection_mouse.x = evt.clientX
 		selection_mouse.y = evt.clientY
 		grabbable_handle = evt.target
-		if ( handle_box_tl == evt.target ) {
-			handle_box_tl._added_size_changer = (dx,dy) => {
-				let xchange = false
-				let ychange = false
-				if ( (select_width - dx) >= 0 ) {
-					select_left += dx
-					select_width -= dx
-					xchange = true
-				}
-				if ( (select_height - dy) >= 0 ) {
-					select_top += dy
-					select_height -= dy
-					ychange = true
-				}
-				return [xchange,ychange]
+		if ( shift_key ) {
+			handle_rotator._added_size_changer = (dx,dy) => {
+				rotator_tracker_left += dx
+				rotator_tracker_top += dy
+				return [true,true]
 			}
 		}
-		if ( handle_box_top == evt.target ) {
-			handle_box_top._added_size_changer = (dx,dy) => {
-				let xchange = false
-				let ychange = false
-				if ( (select_height - dy) >= 0 ) {
-					select_top += dy
-					select_height -= dy
-					ychange = true
+		//
+		if ( handle_box_tl == grabbable_handle ) {
+			if ( shift_key ) {
+				grabbable_handle = handle_rotator
+				fix_rotation_center(handle_rotator,rotator_center,handle_box_tl,handle_box_br)
+			} else {
+				handle_box_tl._added_size_changer = (dx,dy) => {
+					let xchange = false
+					let ychange = false
+					if ( (select_width - dx) >= 0 ) {
+						select_left += dx
+						select_width -= dx
+						xchange = true
+					}
+					if ( (select_height - dy) >= 0 ) {
+						select_top += dy
+						select_height -= dy
+						ychange = true
+					}
+					return [xchange,ychange]
 				}
-				return [xchange,ychange]
+			}
+			return
+		}
+		if ( handle_box_top == grabbable_handle ) {
+			if ( shift_key && false ) {			// later when doing full rotations...
+				grabbable_handle = handle_rotator
+				fix_rotation_center(handle_rotator,rotator_center,handle_box_top,selection_box)
+			} else {
+				handle_box_top._added_size_changer = (dx,dy) => {
+					let xchange = false
+					let ychange = false
+					if ( (select_height - dy) >= 0 ) {
+						select_top += dy
+						select_height -= dy
+						ychange = true
+					}
+					return [xchange,ychange]
+				}
 			}
 		}
-		if ( handle_box_bl == evt.target ) {
-			handle_box_bl._added_size_changer = (dx,dy) => {
-				let xchange = false
-				let ychange = false
-				if ( (select_width - dx) >= 0 ) {
-					select_left += dx
-					select_width -= dx
-					xchange = true
+		if ( handle_box_bl == grabbable_handle ) {
+			if ( shift_key ) {
+				grabbable_handle = handle_rotator
+				fix_rotation_center(handle_rotator,rotator_center,handle_box_bl,handle_box_tr)
+			} else {
+				handle_box_bl._added_size_changer = (dx,dy) => {
+					let xchange = false
+					let ychange = false
+					if ( (select_width - dx) >= 0 ) {
+						select_left += dx
+						select_width -= dx
+						xchange = true
+					}
+					if ( (select_height + dy) >= 0 ) {
+						select_height += dy
+						ychange = true
+					}
+					return [xchange,ychange]
 				}
-				if ( (select_height + dy) >= 0 ) {
-					select_height += dy
-					ychange = true
-				}
-				return [xchange,ychange]
 			}
 		}
-		if ( handle_box_left == evt.target ) {
-			handle_box_left._added_size_changer = (dx,dy) => {
-				let xchange = false
-				let ychange = false
-				if ( (select_width - dx) >= 0 ) {
-					select_left += dx
-					select_width -= dx
-					xchange = true
+		if ( handle_box_left == grabbable_handle ) {
+			if ( shift_key && false ) {
+				grabbable_handle = handle_rotator
+				fix_rotation_center(handle_rotator,rotator_center,handle_box_left,selection_box)
+			} else {
+				handle_box_left._added_size_changer = (dx,dy) => {
+					let xchange = false
+					let ychange = false
+					if ( (select_width - dx) >= 0 ) {
+						select_left += dx
+						select_width -= dx
+						xchange = true
+					}
+					return [xchange,ychange]
 				}
-				return [xchange,ychange]
 			}
 		}
-		if ( handle_box_bottom == evt.target ) {
-			handle_box_bottom._added_size_changer = (dx,dy) => {
-				let xchange = false
-				let ychange = false
-				if ( (select_height + dy) >= 0 ) {
-					select_height += dy
-					ychange = true
+		if ( handle_box_bottom == grabbable_handle ) {
+			if ( shift_key && false ) {
+				grabbable_handle = handle_rotator
+				fix_rotation_center(handle_rotator,rotator_center,handle_box_bottom,selection_box)
+			} else {
+				handle_box_bottom._added_size_changer = (dx,dy) => {
+					let xchange = false
+					let ychange = false
+					if ( (select_height + dy) >= 0 ) {
+						select_height += dy
+						ychange = true
+					}
+					return [xchange,ychange]
 				}
-				return [xchange,ychange]
 			}
 		}
-		if ( handle_box_tr == evt.target ) {
-			handle_box_tr._added_size_changer = (dx,dy) => {
-				let xchange = false
-				let ychange = false
-				if ( (select_height - dy) >= 0 ) {
-					select_top += dy
-					select_height -= dy
-					ychange = true
+		if ( handle_box_tr == grabbable_handle ) {
+			if ( shift_key ) {
+				grabbable_handle = handle_rotator
+				fix_rotation_center(handle_rotator,rotator_center,handle_box_tr,handle_box_bl)
+			} else {
+				handle_box_tr._added_size_changer = (dx,dy) => {
+					let xchange = false
+					let ychange = false
+					if ( (select_height - dy) >= 0 ) {
+						select_top += dy
+						select_height -= dy
+						ychange = true
+					}
+					if ( (select_width + dx) >= 0 ) {
+						select_width += dx
+						xchange = true
+					}
+					return [xchange,ychange]
 				}
-				if ( (select_width + dx) >= 0 ) {
-					select_width += dx
-					xchange = true
-				}
-				return [xchange,ychange]
 			}
 		}
-		if ( handle_box_right == evt.target ) {
-			handle_box_right._added_size_changer = (dx,dy) => {
-				let xchange = false
-				let ychange = false
-				if ( (select_width + dx) >= 0 ) {
-					select_width += dx
-					xchange = true
+		if ( handle_box_right == grabbable_handle ) {
+			if ( shift_key && false ) {
+				grabbable_handle = handle_rotator
+				fix_rotation_center(handle_rotator,rotator_center,handle_box_right,selection_box)
+			} else {
+				handle_box_right._added_size_changer = (dx,dy) => {
+					let xchange = false
+					let ychange = false
+					if ( (select_width + dx) >= 0 ) {
+						select_width += dx
+						xchange = true
+					}
+					return [xchange,ychange]
 				}
-				return [xchange,ychange]
 			}
 		}
-		if ( handle_box_br == evt.target ) {
-			handle_box_br._added_size_changer = (dx,dy) => {
-				let xchange = false
-				let ychange = false
-				if ( (select_width + dx) >= 0 ) {
-					select_width += dx
-					xchange = true
+		if ( handle_box_br == grabbable_handle ) {
+			if ( shift_key ) {
+				grabbable_handle = handle_rotator
+				fix_rotation_center(handle_rotator,rotator_center,handle_box_br,handle_box_tl)
+			} else {
+				handle_box_br._added_size_changer = (dx,dy) => {
+					let xchange = false
+					let ychange = false
+					if ( (select_width + dx) >= 0 ) {
+						select_width += dx
+						xchange = true
+					}
+					if ( (select_height + dy) >= 0 ) {
+						select_height += dy
+						ychange = true
+					}
+					return [xchange,ychange]
 				}
-				if ( (select_height + dy) >= 0 ) {
-					select_height += dy
-					ychange = true
-				}
-				return [xchange,ychange]
 			}
 		}
 
@@ -1269,6 +1485,8 @@
 	<div bind:this={text_box} class="text-box" style={text_box_style} >
 		<input bind:this={text_box_field} type="text"  style={text_box_field_style} bind:value={text_value}  />
 	</div>
+	<div bind:this={handle_rotator} class="handle-box rotator-c" style={handle_rotator_style} on:mousedown|capture|preventDefault|stopPropagation={(evt) => {}} >&nbsp</div>
+	<div bind:this={rotator_center} class="handle-box rotator-center-c" style={rotator_center_style} on:mousedown|capture|preventDefault|stopPropagation={(evt) => {}} >&nbsp</div>
 </div>
 <style>
 
@@ -1297,6 +1515,35 @@
 		height: 5px;
 		background-color: black;
 	}
+
+	.rotator-c  {
+		position: absolute;
+		width: 10px;
+        height: 10px;
+        text-align: center;
+        vertical-align: middle;
+        border-radius: 50%; /*magic to turn square into circle*/
+        background: white;
+        border: 2px solid #4286f4;
+        box-sizing: border-box;
+        position:absolute;
+        cursor: nwse-resize;
+	}
+
+	.rotator-center-c {
+		position: absolute;
+		width: 10px;
+        height: 10px;
+        text-align: center;
+        vertical-align: middle;
+        border-radius: 50%; /*magic to turn square into circle*/
+        background: rgb(253, 153, 3);
+        border: 2px solid #ec0b0b;
+        box-sizing: border-box;
+        cursor: nwse-resize;
+	}
+
+
 
 	.text-box {
 		position: absolute;
