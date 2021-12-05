@@ -29,6 +29,8 @@
 	export let selected_objects
 	export let selection_changed
 
+	export let group_selected = false
+
 	let selection_on = false
 	let select_left = 0
 	let select_top = 0
@@ -1031,6 +1033,8 @@
 		let alt_key = evt.altKey
 		let ctrl_key = evt.ctrlKey
 
+		group_selected = false
+
 		turn_off_text()
 		draw_control.command("deselect")
 		if ( tool !== 'select' ) {
@@ -1159,6 +1163,9 @@
 						console.log(accrued_selections_list)
 					}	// // // // // // // // // 
 				}
+				if ( (can_draw_selected.shape === "group") && (can_draw_selected.role === 'picker') ) {
+					group_selected = true
+				}
 				set_selection_controls(selection_on)
 			} else {
 				accrued_selections_list = []
@@ -1168,6 +1175,7 @@
 				selection_on = false
 				set_selection_controls(false)
 				drawing = true
+				group_selected = true
 				draw_control.add("group",{ "thick" : 1, "line" : "rgba(1,1,1,5.0)", "fill" : "rgba(1,1,1,0.0)", "points" : [mouse_x,mouse_y,10,10], "role" : "picker" })
 				change_selection("select_top")
 				await tick()

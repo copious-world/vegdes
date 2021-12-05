@@ -237,6 +237,7 @@
 		free_mode = true
 	}
 	$: {
+
 		free_mode = false
 		if ( (g_current_selection_object !== false ) 
 				&& (['component','connector'].indexOf(g_current_selection_object.role) < 0)   ) {
@@ -317,7 +318,7 @@
 		component_selected = false
 		eye_dropper_selected = false
 		connector_selected = false
-		group_selected = false
+		// group_selected = false
 		ungroup_selected = false
 		curve_selected = false
 		//
@@ -545,8 +546,8 @@
 		'object_text' : object_text
 	}
 
-
-
+	// ---- ---- ---- ---- ---- ---- ---- ---- ---- ---- ---- ---- ---- ---- ---- ---- ---- ---- ---- ---- ---- ---- ---- ----
+	//
 	//
 	let text_names = ["x", "y", "bold", "italic", "font", "align-left", "align-center", "align-right","font-size"]
 	let rect_names = ["x", "y", "w", "h", "corner"]
@@ -1458,7 +1459,7 @@ let object_text_size = 32
 	{/if}
 
 	{#if (g_selector || g_free_mode) && selection_mode_var('relative') }
-		<span class="top-text" >font:</span>
+		<span class="top-text" >anchor:</span>
 		<div class="bottom-menu-button" style="vertical-align:bottom">
 			<select bind:value={grouping_reference} style="height:25px;font-size:70%" >
 				{#each grouping_references as a_ref}
@@ -1515,8 +1516,10 @@ let object_text_size = 32
 	{/if}
 
 	{#if (g_selector || g_free_mode) && selection_mode_var('font-size') }
-		<input type=number class="bottom-input" min='9' max='64' bind:value={object_text_size} on:change={change_font} />
+	<input type=number class="bottom-input" min='9' max='64' bind:value={object_text_size} on:change={change_font} />
+	<div class="bottom-menu-button big_pict" >
 		<input type=range  class="top-input" min='9' max='64' bind:value={object_text_size} on:change={change_font} />
+	</div>
 	{/if}
 
 
@@ -1633,7 +1636,7 @@ let object_text_size = 32
 		<canvas class="main-canvas" bind:this={g_canvas_element} width={g_calc_doc_width} height={g_calc_doc_height} style="width:{g_calc_doc_width}px;height:{g_calc_doc_height}px;left:{g_doc_left}px;top:{g_doc_top}px"  >
 	
 		</canvas>
-		<CanEdit {...edit_props} bind:selected_objects={g_current_selection_object} bind:selection_changed={g_selection_changed}/>
+		<CanEdit {...edit_props} bind:selected_objects={g_current_selection_object} bind:selection_changed={g_selection_changed} bind:group_selected={group_selected}/>
 
 	
 		<Ruler disposition="horizontal" {ruler_top} {ruler_magnification} zero_tick={h_zero_tick} ruler_interval={INTERVAL_ruler}/>
