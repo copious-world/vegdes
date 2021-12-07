@@ -61,6 +61,9 @@
 
 	let draw_cautious = false
 
+	let connector_index = false 
+
+	
 	function dist(X,Y) {
 		let [x1,y1] = X
 		let [x2,y2] = Y
@@ -110,6 +113,137 @@
 			return true
 		}
 		return false
+	}
+
+	function gen_id() {
+		let id = `${Math.floor(Math.random()*1000)}${Date.now()}`
+		return id
+	}
+
+
+	// ----
+	function indexer_from_disposition(disposition,start_point) {
+		let l_indexer = { 'x' : 0, 'y' : 1 }
+		let indexes = [0,1,2,3]
+		if ( disposition == 'nw' || disposition == 'nw' ) {
+			indexes = [2,3,0,1]
+		}
+		//
+		if ( start_point ) {
+			l_indexer.x = indexes[0]
+			l_indexer.y = indexes[1]
+		} else {
+			l_indexer.x = indexes[2]
+			l_indexer.y = indexes[3]
+		}
+		return l_indexer
+	}
+
+
+	let g_active_connections_complete = {}
+	let g_active_connections = {}
+
+	// semantic part for underlying flow system
+	function make_connection(connector,component,in_out) {
+		if ( g_active_connections_complete[connector.id] === undefined ) g_active_connections_complete[connector.id] = 0
+		if ( g_active_connections_complete[connector.id] < 2 ) {
+			g_active_connections_complete[connector.id]++
+		}
+		g_active_connections[connector.id] = { 
+			"connector" : connector, 
+			"complete" : (g_active_connections_complete[connector.id] === 2)
+		}
+	}
+
+	function break_connection(connector,component,in_out) {
+		if ( g_active_connections_complete[connector.id] !== undefined ) {
+			if ( g_active_connections_complete[connector.id] > 0 ) {
+				g_active_connections_complete[connector.id]--
+			} else {
+				delete g_active_connections_complete[connector.id]
+				delete g_active_connections[connector.id]
+			}
+		}
+	}
+
+
+	function connections_disconnect(connector,component,in_out) {
+		if ( in_out === 'in' ) {
+			delete component.stretching_inputs[connector.id]
+		} else {
+			delete component.stretching_outputs[connector.id]
+		}
+		break_connection(connector,component,in_out)
+	}
+
+	async function proximity_check(points,disposition) {
+		let proxmimities = false
+		let indexer = indexer_from_disposition(disposition,true)
+		let x1 = points[indexer.x]
+		let y1 = points[indexer.y]
+		draw_control.searching({ "mouse_loc" : [x1,y1], "no_change" : true, "exclude" : shape_index })
+		await tick()
+		if ( (connector_index !== false) && (connector_index >= 0) ) {
+			let possible_connection = draw_cautious.ith_object(connector_index)
+			if ( possible_connection ) {
+				if ( possible_connection.role === 'component' ) {
+					proxmimities = [[possible_connection,[x1,y1],indexer]]
+				}
+			}
+		}
+		indexer = indexer_from_disposition(disposition,false)
+		let x2 = points[indexer.x]
+		let y2 = points[indexer.y]
+		draw_control.searching({ "mouse_loc" : [x2,y2], "no_change" : true, "exclude" : shape_index })
+		await tick()
+		if ( (connector_index !== false) && (connector_index >= 0) ) {
+			let possible_connection = draw_cautious.ith_object(connector_index)
+			if ( possible_connection ) {
+				if ( possible_connection.role === 'component' ) {
+					if ( proxmimities ) {
+						proxmimities.push([possible_connection,[x2,y2]])
+					} else {
+						proxmimities = [false,[possible_connection,[x2,y2],indexer]]
+					}
+				}
+			}
+		}
+	
+		return proxmimities
+	}
+
+
+	function register_connections(connector,proximities) {
+		//
+		if ( connector.id === undefined ) return
+		//
+		let input_info = proximities[0]
+		let output_info = proximities[1]
+		let input = input_info[0]
+		//
+		if ( connector.input && (input !== connector.input) ) {
+			connections_disconnect(connector,input,'in')
+			connector.input = false
+		}
+		if ( input ) {
+			make_connection(connector,input,'in')
+			if ( input.stretching_inputs === undefined ) input.stretching_inputs = {}
+			input_info[0] = connector.id
+			input.stretching_inputs[connector.id] = input_info
+			connector.input = input
+		}
+		let output = output_info[0]
+		if ( connector.output && (output !== connector.output) ) {
+			connections_disconnect(connector,output,'out')
+			connector.output = false
+		}
+		if ( output ) {
+			make_connection(connector,output,'out')
+			if ( output.stretching_outputs === undefined ) output.stretching_outputs = {}
+			output_info[0] = connector.id
+			output.stretching_outputs[connector.id] = output_info
+			connector.output = output
+		}
 	}
 
 
@@ -519,6 +653,7 @@
 		select_height = prev_select_height
 	}
 
+
 	async function update_selected_object(dx,dy,xchange,ychange,diff_source,option_key) {
 		if ( can_draw_selected ) {
 			if ( can_draw_selected.shape === 'rect' || can_draw_selected.shape === 'group' ) {
@@ -626,8 +761,14 @@
 					points[2] += dx
 					points[3] += dy
 				}
-
+				//
 				let new_pars = Object.assign(can_draw_selected.pars,{ 'points': points })
+				if ( option_key ) {
+					let proximities = await proximity_check(points,can_draw_selected.disposition)
+					if ( proximities ) {
+						register_connections(can_draw_selected,proximities)
+					}
+				}
 				parameters_update(new_pars)
 			} else {
 				if ( diff_source ) {
@@ -701,7 +842,7 @@
 	}
 
 
-	function circular_update_selected_object(dx,dy,xchange,ychange,diff_source,option_key) {
+	async function circular_update_selected_object(dx,dy,xchange,ychange,diff_source,option_key) {
 		if ( can_draw_selected.shape === 'line' ) {
 			let points = can_draw_selected.pars.points  // preserve orientation....
 			points[0] = rotator_center_left - doc_left
@@ -719,6 +860,13 @@
 			can_draw_selected.disposition = disposition
 
 			let new_pars = Object.assign(can_draw_selected.pars,{ 'points': points })
+			if ( option_key ) {
+				let proximities = await proximity_check(points)
+				if ( proximities ) {
+					register_connections(can_draw_selected,proximities)
+				}
+			}
+
 			parameters_update(new_pars)
 		}
 	}
@@ -1082,6 +1230,7 @@
 			}
 			draw_control.add("rect",{
 				"role" : "component",
+				"id" : gen_id(),
 				"thick" : cpars.thick, 
 				"line" : cpars.line, 
 				"fill" : cpars.fill,
@@ -1094,6 +1243,7 @@
 			drawing = true
 			draw_control.add("line",{
 				"role" : "connector",
+				"id" : gen_id(),
 				"thick" : tool_parameters.parameters.thick, 
 				"line" : tool_parameters.parameters.line, 
 				"fill" : tool_parameters.parameters.fill,
@@ -1218,6 +1368,8 @@
 	let grabbable_handle = false
 
 	async function reposition(evt) {
+		let option_key = evt.altKey
+		//
 		if ( drag_selection && selection_box && (evt.buttons == 1) ) {
 			let new_x = evt.clientX
 			let new_y = evt.clientY
@@ -1229,7 +1381,6 @@
 			select_top += dif_y
 			selection_positions()    // set style left, top, width, height
 			save_selection_bounds()
-			let option_key = evt.altKey
 			update_selected_object(dif_x,dif_y,true,true,false,option_key)
 		} else if ( handle_selected && (grabbable_handle === handle_rotator) && (evt.buttons == 1) ) {
 			// rotation
@@ -1242,7 +1393,7 @@
 			grabbable_handle._added_size_changer(dif_x,dif_y)
 			selection_circular_positions()    // set style left, top, width, height
 			save_selection_bounds()
-			circular_update_selected_object(dif_x,dif_y,true,true,grabbable_handle,false)
+			circular_update_selected_object(dif_x,dif_y,true,true,grabbable_handle,option_key)
 		} else if ( handle_selected && grabbable_handle && (evt.buttons == 1) ) {
 			let new_x = evt.clientX
 			let new_y = evt.clientY
@@ -1253,7 +1404,7 @@
 			let [xtrue,ytrue] = grabbable_handle._added_size_changer(dif_x,dif_y)
 			selection_positions()    // set style left, top, width, height
 			save_selection_bounds()
-			update_selected_object(dif_x,dif_y,xtrue,ytrue,grabbable_handle,false)
+			update_selected_object(dif_x,dif_y,xtrue,ytrue,grabbable_handle,option_key)
 		}
 		if ( evt.buttons === 0 ) {
 			drag_selection = false
@@ -1480,7 +1631,7 @@
 
 </script>
 <div bind:this={drag_region} on:mousedown={start_tracking} on:mouseup={stop_tracking} style="height:inherit;width:inherit" on:mousemove={reposition} on:mouseup={stop_drags}>
-	<CanDraw bind:internal_draw={draw_cautious} bind:selected={can_draw_selected} bind:mouse_to_shape={shape_index} bind:multi_select={multi_selected} bind:canvas_mouse={canvas_mouse}  bind:canvas_changed={canvas_changed} bind:z_list={z_list} {height} {width} {doc_left} {doc_top} {doc_width} {doc_height}  />
+	<CanDraw bind:internal_draw={draw_cautious} bind:selected={can_draw_selected} bind:mouse_to_shape={shape_index} bind:secondary_shape={connector_index} bind:multi_select={multi_selected} bind:canvas_mouse={canvas_mouse}  bind:canvas_changed={canvas_changed} bind:z_list={z_list} {height} {width} {doc_left} {doc_top} {doc_width} {doc_height}  />
 	<div bind:this={selection_box} class="selection-box" style={selection_style} on:mousedown|capture|preventDefault|stopPropagation={grab_selection} >&nbsp</div>
 	<div bind:this={handle_box_tl} class="handle-box top-left-c" style={handle_top_left_style} on:mousedown|capture|preventDefault|stopPropagation={grab_handle} >&nbsp</div>
 	<div bind:this={handle_box_top} class="handle-box top-c"  style={handle_top_style} on:mousedown|capture|preventDefault|stopPropagation={grab_handle} >&nbsp</div>

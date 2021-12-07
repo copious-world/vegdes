@@ -1522,7 +1522,6 @@ let object_text_size = 32
 	</div>
 	{/if}
 
-
 	{#if (g_selector || g_free_mode) && selection_mode_var('align-top') }
 		<div class="bottom-menu-button" >
 			<img class="v-left-menu-item"  src="./images/align_top.svg" alt="align top" title="align top" />
