@@ -177,7 +177,7 @@
 	}
 
 	async function proximity_check(points,disposition) {
-		let proxmimities = false
+		let proxmimities = [false,false]
 		let indexer = indexer_from_disposition(disposition,true)
 		let x1 = points[indexer.x]
 		let y1 = points[indexer.y]
@@ -187,7 +187,10 @@
 			let possible_connection = draw_cautious.ith_object(connector_index)
 			if ( possible_connection ) {
 				if ( possible_connection.role === 'component' ) {
-					proxmimities = [[possible_connection,[x1,y1],indexer]]
+					let [x0,y0,w,h] = possible_connection.bounds
+					w = Math.max(w,1)
+					let percent_points = [(x1 - x0)/w,(y1 - y0)/h]
+					proxmimities[0] = [possible_connection,[x1,y1],indexer,percent_points]
 				}
 			}
 		}
@@ -200,14 +203,16 @@
 			let possible_connection = draw_cautious.ith_object(connector_index)
 			if ( possible_connection ) {
 				if ( possible_connection.role === 'component' ) {
-					if ( proxmimities ) {
-						proxmimities.push([possible_connection,[x2,y2]])
-					} else {
-						proxmimities = [false,[possible_connection,[x2,y2],indexer]]
-					}
+					let [x0,y0,w,h] = possible_connection.bounds
+					w = Math.max(w,1)
+					let percent_points = [(x2 - x0)/w,(y2 - y0)/h]
+					//
+					proxmimities[1] = [possible_connection,[x2,y2],indexer,percent_points]
 				}
 			}
 		}
+
+		if ( proxmimities && proxmimities.length === 1 ) proxmimities.push(false)
 	
 		return proxmimities
 	}
@@ -222,7 +227,7 @@
 		let input = input_info[0]
 		//
 		if ( connector.input && (input !== connector.input) ) {
-			connections_disconnect(connector,input,'in')
+			connections_disconnect(connector,connector.input,'in')
 			connector.input = false
 		}
 		if ( input ) {
@@ -232,9 +237,10 @@
 			input.stretching_inputs[connector.id] = input_info
 			connector.input = input
 		}
+		if ( output_info == undefined ) return
 		let output = output_info[0]
 		if ( connector.output && (output !== connector.output) ) {
-			connections_disconnect(connector,output,'out')
+			connections_disconnect(connector,connector.output,'out')
 			connector.output = false
 		}
 		if ( output ) {
@@ -653,11 +659,100 @@
 		select_height = prev_select_height
 	}
 
-
 	async function update_selected_object(dx,dy,xchange,ychange,diff_source,option_key) {
-		if ( can_draw_selected ) {
-			if ( can_draw_selected.shape === 'rect' || can_draw_selected.shape === 'group' ) {
-				let points = can_draw_selected.pars.points
+		await _update_target_object(can_draw_selected,dx,dy,xchange,ychange,diff_source,option_key)
+	}
+
+	async function reshape_connectors(target_draw_shape,dx,dy,xchange,ychange,diff_source,option_key) {
+		if ( (target_draw_shape.stretching_outputs !== undefined) && (target_draw_shape.stretching_outputs !== false) ) {
+			// // [[connector.id,[x1,y1],indexer]]
+			for ( let c_id in target_draw_shape.stretching_outputs ) {
+				let c_info = g_active_connections[c_id]
+				if ( c_info && c_info.connector ) {
+					let cc = c_info.connector
+					let descr = target_draw_shape.stretching_outputs[c_id]
+					let pre_points = descr[1]
+					let indexer = descr[2]
+					let percent_points = descr[3]
+					//
+					let x = pre_points[0]
+					let y = pre_points[1]
+					if ( !diff_source ) {
+						x += dx
+						y += dy
+					} else {
+						let [x0,y0,w,h] = target_draw_shape.bounds
+						x = x0 + w*percent_points[0]
+						y = y0 + h*percent_points[1]
+					}
+
+					descr[1] = [x,y]
+					//
+					let points = cc.pars.points
+					points[indexer.x] = x
+					points[indexer.y] = y
+					//
+					let disposition = calc_line_disposition(points)
+					cc.disposition = disposition
+					//
+					let new_pars = Object.assign(cc.pars,{ 'points': points })
+					new_pars.id = c_id
+					new_pars.role = 'connector'
+					draw_control.command('update_by_id',new_pars)
+					//
+				}
+				await tick()
+				draw_control.command('refresh',{})
+				await tick()
+			}
+		}
+		if ( (target_draw_shape.stretching_inputs !== undefined) && (target_draw_shape.stretching_inputs !== false) ) {
+			// // [[connector.id,[x1,y1],indexer]]
+			for ( let c_id in target_draw_shape.stretching_inputs ) {
+				let c_info = g_active_connections[c_id]
+				if ( c_info && c_info.connector ) {
+					let cc = c_info.connector
+					let descr = target_draw_shape.stretching_inputs[c_id]
+					let pre_points = descr[1]
+					let indexer = descr[2]
+					let percent_points = descr[3]
+					//
+					let x = pre_points[0]
+					let y = pre_points[1]
+					if ( !diff_source ) {
+						x += dx
+						y += dy
+					} else {
+						let [x0,y0,w,h] = target_draw_shape.bounds
+						x = x0 + w*percent_points[0]
+						y = y0 + h*percent_points[1]
+					}
+					descr[1] = [x,y]
+					//
+					let points = cc.pars.points
+					points[indexer.x] = x
+					points[indexer.y] = y
+					//
+					let disposition = calc_line_disposition(points)
+					cc.disposition = disposition
+					//
+					let new_pars = Object.assign(cc.pars,{ 'points': points })
+					new_pars.id = c_id
+					new_pars.role = 'connector'
+					draw_control.command('update_by_id',new_pars)
+					//
+				}
+				await tick()
+				draw_control.command('refresh',{})
+				await tick()
+			}
+		}
+	}
+
+	async function _update_target_object(target_draw_shape,dx,dy,xchange,ychange,diff_source,option_key) {
+		if ( target_draw_shape ) {
+			if ( target_draw_shape.shape === 'rect' || target_draw_shape.shape === 'group' ) {
+				let points = target_draw_shape.pars.points
 				if ( diff_source ) {
 					if ( diff_source === handle_box_tl) {
 						if ( xchange ) points[0] += dx
@@ -677,22 +772,26 @@
 				}
 				if ( xchange ) points[2] = select_width
 				if ( ychange ) points[3] = select_height
-				let new_pars = Object.assign(can_draw_selected.pars,{ 'points': points })
-				if ( can_draw_selected.shape === 'group' ) {
+				let new_pars = Object.assign(target_draw_shape.pars,{ 'points': points })
+				if ( target_draw_shape.shape === 'group' ) {
 					multi_selection(option_key)
 				}
-				if ( option_key && !diff_source && (can_draw_selected.shape === 'group') ) {
+				if ( option_key && !diff_source && (target_draw_shape.shape === 'group') ) {
 					group_parameters_update(new_pars,dx,dy)
 				} else {
 					parameters_update(new_pars)
+					if ( target_draw_shape.role === 'component' ) {
+						//	// if there are connectors change their endpoint positions and call this method...
+						await reshape_connectors(target_draw_shape,dx,dy,xchange,ychange,diff_source,option_key)
+					}
 				}
-			} else if ( can_draw_selected.shape === 'line' ) {
-				let points = can_draw_selected.pars.points
+			} else if ( target_draw_shape.shape === 'line' ) {
+				let points = target_draw_shape.pars.points
 				if ( diff_source ) {
-					let disposition = can_draw_selected.disposition
+					let disposition = target_draw_shape.disposition
 					if ( !disposition ) {
 						disposition = calc_line_disposition(points)
-						can_draw_selected.disposition = disposition
+						target_draw_shape.disposition = disposition
 					}
 					switch ( disposition ) {
 						case 'se' : 
@@ -762,17 +861,17 @@
 					points[3] += dy
 				}
 				//
-				let new_pars = Object.assign(can_draw_selected.pars,{ 'points': points })
+				let new_pars = Object.assign(target_draw_shape.pars,{ 'points': points })
 				if ( option_key ) {
-					let proximities = await proximity_check(points,can_draw_selected.disposition)
+					let proximities = await proximity_check(points,target_draw_shape.disposition)
 					if ( proximities ) {
-						register_connections(can_draw_selected,proximities)
+						register_connections(target_draw_shape,proximities)
 					}
 				}
 				parameters_update(new_pars)
 			} else {
 				if ( diff_source ) {
-					let points = can_draw_selected.pars.points
+					let points = target_draw_shape.pars.points
 					if ( diff_source === handle_box_tl) {
 						if ( xchange ) points[0] += dx/2
 						if ( ychange ) points[1] += dy/2
@@ -799,7 +898,7 @@
 						if ( ychange ) points[1] += dy/2
 					}
 
-					switch ( can_draw_selected.shape ) {
+					switch ( target_draw_shape.shape ) {
 						case 'ellipse' : {
 							if ( xchange ) points[2] = select_width/2
 							if ( ychange ) points[3] = select_height/2
@@ -810,7 +909,7 @@
 								points[0] = (select_left - doc_left) + select_width/2
 								points[1] = (select_top - doc_top) +  select_height/2
 								let ref_x = { 'x' : (select_left - doc_left), 'y' : (select_top - doc_top) } 
-								points = draw_cautious.change_star_radius(can_draw_selected,ref_x,dx,dy)
+								points = draw_cautious.change_star_radius(target_draw_shape,ref_x,dx,dy)
 							}
 							break;
 						}
@@ -818,7 +917,7 @@
 							if ( xchange|| ychange ) {
 								let sw = dx
 								let sh = dy
-								let area_prior = can_draw_selected.bounds[2]*can_draw_selected.bounds[3]
+								let area_prior = target_draw_shape.bounds[2]*target_draw_shape.bounds[3]
 								let sign = (select_width*select_height < area_prior) ? -1 : 1
 								points[2] += sign*Math.sqrt(sw*sw + sh*sh)
 							}
@@ -828,13 +927,13 @@
 							break;
 						}
 					}
-					let new_pars = Object.assign(can_draw_selected.pars,{ 'points': points })
+					let new_pars = Object.assign(target_draw_shape.pars,{ 'points': points })
 					parameters_update(new_pars)
 				} else {
-					let points = can_draw_selected.pars.points
+					let points = target_draw_shape.pars.points
 					points[0] += dx
 					points[1] += dy
-					let new_pars = Object.assign(can_draw_selected.pars,{ 'points': points })
+					let new_pars = Object.assign(target_draw_shape.pars,{ 'points': points })
 					parameters_update(new_pars)
 				}
 			}
@@ -844,18 +943,14 @@
 
 	async function circular_update_selected_object(dx,dy,xchange,ychange,diff_source,option_key) {
 		if ( can_draw_selected.shape === 'line' ) {
+			//
 			let points = can_draw_selected.pars.points  // preserve orientation....
 			points[0] = rotator_center_left - doc_left
 			points[1] = rotator_center_top - doc_top
 			points[2] = rotator_tracker_left - doc_left
 			points[3] = rotator_tracker_top - doc_top
 			//
-	/*
-	let rotator_center_left = 0		// fixed
-	let rotator_center_top = 0
-	let rotator_tracker_left = 0	// in motion
-	let rotator_tracker_top = 0
-	*/	
+			let prev_disposition = can_draw_selected.disposition
 			let disposition = calc_line_disposition(points)
 			can_draw_selected.disposition = disposition
 
@@ -865,7 +960,11 @@
 				if ( proximities ) {
 					register_connections(can_draw_selected,proximities)
 				}
+			} else if ( (prev_disposition !== disposition) && (can_draw_selected.role === 'connector') ) {
+				// reset disposition in connected components
+				// break the connections
 			}
+
 
 			parameters_update(new_pars)
 		}
