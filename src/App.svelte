@@ -925,6 +925,7 @@ let object_text_size = 32
 		id_timeout = setTimeout(() => {
 			let old_id = tmp_sel_obj.pars.id
 			tmp_sel_obj.pars.id = tmp_val
+			tmp_sel_obj.id = tmp_val
 			if ( tmp_sel_obj.role === "connector" ) {
 				commander.command("update_connector_id",{ "old_id" : old_id, "new_id" : tmp_val })
 			}
