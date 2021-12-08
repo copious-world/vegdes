@@ -416,6 +416,33 @@
 						}
 						break;
 					}
+					case "update_connector_id" : {
+						let {old_id,new_id} = cmd_pars
+						let connector_info = g_active_connections[old_id]
+						if ( connector_info ) {
+							let connector = connector_info.connector
+							g_active_connections[new_id] = connector_info
+							connector.id = new_id
+							let output = connector.output
+							let input = connector.input
+							if ( output ) {
+								let output_info = output.stretching_outputs[old_id]
+								output_info[0] = new_id
+								output.stretching_outputs[new_id] = output_info
+								delete output.stretching_outputs[old_id]
+							}
+							if ( input ) {
+								let input_info = input.stretching_inputs[old_id]
+								input_info[0] = new_id
+								input.stretching_inputs[new_id] = input_info
+								delete input.stretching_inputs[old_id]
+							}
+							delete g_active_connections[old_id]
+							g_active_connections_complete[new_id] = g_active_connections_complete[old_id]
+							delete g_active_connections_complete[old_id]
+						}
+						break;
+					}
 				}
 			}
         }
