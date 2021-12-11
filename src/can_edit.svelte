@@ -121,6 +121,13 @@
 	}
 
 
+
+	// CONNECTORS
+
+	async function capture_save_state() {
+		// TBD
+	}
+
 	// ----
 	function indexer_from_disposition(disposition,start_point) {
 		let l_indexer = { 'x' : 0, 'y' : 1 }
@@ -266,6 +273,7 @@
 					case "clone" : {
 						let c_shape = can_draw_selected.shape
 						if ( c_shape === "group" )  {
+							capture_save_state()  // go back to no clone if undo
 							//
 							let sel_list = [].concat(can_draw_selected.select_list)
 							sel_list.sort()
@@ -297,6 +305,7 @@
 							canvas_changed = true
 							await fetch_zlist()
 						} else {
+							capture_save_state()  // go back to no clone if undo
 							let c_pars = JSON.parse(JSON.stringify(can_draw_selected.pars))
 							let dx = cmd_pars.offset_x
 							let dy = cmd_pars.offset_y
@@ -315,6 +324,7 @@
 						break;
 					}
 					case "delete" : {
+						capture_save_state()  // go back to element exists if undo
 						draw_control.command("remove_selected")
 						await tick()
 						set_selection_controls(false)
@@ -322,6 +332,8 @@
 						break;
 					}
 					case "to_top" : {
+						capture_save_state()  // go back to not on top if undo
+						//
 						if ( can_draw_selected.role !== 'picker' ) {
 							draw_control.command("send_top",{ "select" : false })							
 						} else {
@@ -353,6 +365,8 @@
 						break;
 					}
 					case "to_bottom" : {
+						capture_save_state()  // go back to not on bottom if undo
+						//
 						if ( can_draw_selected.role !== 'picker' ) {
 							draw_control.command("send_bottom",{ "select" : false })							
 						} else {
@@ -411,6 +425,7 @@
 					}
 					case "update_parameter" : {
 						if ( can_draw_selected.shape !== 'group' ) {
+							capture_save_state()  // go back to no clone if undo
 							let new_pars = Object.assign(can_draw_selected.pars,cmd_pars)
 							draw_control.update(new_pars)
 						}
@@ -420,6 +435,7 @@
 						let {old_id,new_id} = cmd_pars
 						let connector_info = g_active_connections[old_id]
 						if ( connector_info ) {
+							capture_save_state()  // go back to no clone if undo
 							let connector = connector_info.connector
 							g_active_connections[new_id] = connector_info
 							connector.id = new_id
@@ -450,6 +466,8 @@
 
 
 	async function parameters_update(pars) {
+		capture_save_state()  // go back to no clone if undo
+		//
 		draw_control.update(pars)
 		await tick()
 		parameter_publisher.command("update_selected",can_draw_selected)
@@ -459,6 +477,8 @@
 
 	async function group_parameters_update(pars,dif_x,dif_y) {
 		if ( can_draw_selected ) {
+			capture_save_state()  // go back to no clone if undo
+			//
 			draw_control.update(pars)
 			await tick()
 			//
@@ -519,6 +539,7 @@
 	}
 
 
+	// ZLIST DEEP CLONE HAS HAPPENED
 	let catch_selection = false
 	let z_list = false
 	async function fetch_zlist() {
@@ -526,6 +547,7 @@
 		await tick()
 		if ( z_list ) {
 			redo_list.push(z_list)
+			await capture_save_state()
 		}
 	}
 
@@ -535,6 +557,8 @@
 			let a_z_list = redo_list.get(n - ith)
 			if ( a_z_list ) {
 				draw_control.command("z_list_replace",{ "z_list" : a_z_list })
+				await tick()
+				await capture_save_state()
 			}
 		}
 	}
@@ -1465,6 +1489,7 @@
 	async function stop_tracking(evt) {
 		if ( drawing ) {
 			await fetch_zlist()
+			await capture_save_state()
 		}
 		drawing = false
 	}
@@ -1558,6 +1583,8 @@
 		}
 		handle_rotator_style = `visibility:hidden;display:none;left:0px;top:0px`
 		rotator_center_style = `visibility:hidden;display:none;left:0px;top:0px`
+		//
+		await capture_save_state()
 	}
 
 

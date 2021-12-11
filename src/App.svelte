@@ -1356,7 +1356,7 @@ let object_text_size = 32
 		<img class="v-left-menu-item"  src="./images/text.svg" alt="text" title="text" />
 	</div>
 	<div class="v-left-menu-button" on:click={ (evt) => { g_selector = (mode_toggle === 'component'); set_selection_mode('component') } } >
-		<img class="v-left-menu-item"  src="./images/image.svg" alt="component" title="component" />
+		<img class="v-left-menu-item"  src="./images/gears.svg" alt="component" title="component" />
 	</div>
 	<div class="v-left-menu-button" on:click={ (evt) => { g_selector = (mode_toggle === 'connector'); set_selection_mode('connector') } } >
 		<img class="v-left-menu-item"  src="./images/conn.svg" alt="connector" title="connector" />

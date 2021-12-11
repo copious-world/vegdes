@@ -34,12 +34,12 @@
      guidetolerance="10"
      inkscape:pageopacity="0"
      inkscape:pageshadow="2"
-     inkscape:window-width="918"
-     inkscape:window-height="747"
+     inkscape:window-width="1427"
+     inkscape:window-height="788"
      id="namedview14"
      showgrid="false"
      inkscape:zoom="7.8666667"
-     inkscape:cx="-7.3474576"
+     inkscape:cx="-0.35593221"
      inkscape:cy="15"
      inkscape:window-x="0"
      inkscape:window-y="0"
@@ -58,8 +58,8 @@
        data-name="Calque 1">
       <rect
          class="cls-1"
-         x="1.3322492"
-         y="40.970215"
+         x="1.9692934"
+         y="-16.882328"
          width="48.820415"
          height="27.755669"
          id="rect6"
@@ -69,13 +69,13 @@
          points="6.8 0 51.04 0 51.04 49.47 0 49.47 0 0 6.8 0"
          id="polyline8" />
       <path
-         style="fill:none;fill-rule:evenodd;stroke:#000000;stroke-width:5.81115913px;stroke-linecap:butt;stroke-linejoin:miter;stroke-opacity:1"
-         d="M 2.5519999,73.396014 V 88.534999"
+         style="fill:none;fill-rule:evenodd;stroke:#000000;stroke-width:5.91401958px;stroke-linecap:butt;stroke-linejoin:miter;stroke-opacity:1"
+         d="M 3.6333558,-22.340028 V -38.019691"
          id="path823"
          inkscape:connector-curvature="0" />
       <path
          style="fill:none;fill-rule:evenodd;stroke:#000000;stroke-width:4.25333309px;stroke-linecap:butt;stroke-linejoin:miter;stroke-opacity:1"
-         d="M 1.6220339,87.453644 H 27.033898"
+         d="M 0,-36.397658 H 25.411864"
          id="path835"
          inkscape:connector-curvature="0" />
     </g>

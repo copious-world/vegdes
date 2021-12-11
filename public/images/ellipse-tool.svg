@@ -8,7 +8,8 @@
    xmlns:sodipodi="http://sodipodi.sourceforge.net/DTD/sodipodi-0.dtd"
    xmlns:inkscape="http://www.inkscape.org/namespaces/inkscape"
    viewBox="0 0 51.04 49.47"
-   width="24" height="60"
+   width="24"
+   height="60"
    version="1.1"
    id="svg12"
    sodipodi:docname="ellipse-tool.svg"
@@ -39,12 +40,12 @@
      showgrid="false"
      showguides="false"
      inkscape:zoom="4.7705679"
-     inkscape:cx="25.52"
+     inkscape:cx="-13.25945"
      inkscape:cy="24.735001"
      inkscape:window-x="0"
      inkscape:window-y="0"
      inkscape:window-maximized="0"
-     inkscape:current-layer="svg12" />
+     inkscape:current-layer="g849" />
   <defs
      id="defs4">
     <style
@@ -62,13 +63,13 @@
        id="ellipse8"
        ry="11.514933"
        rx="24.137686"
-       cy="27.367861"
+       cy="-10.91214"
        cx="25.825191"
        class="cls-2" />
     <path
        inkscape:connector-curvature="0"
        id="path844"
-       d="m 0.5,40.507004 v 7.336653 h 26.202332 v 0.419237 l -0.628856,-0.628856"
+       d="m 0.5,-30.558333 v -7.336653 h 26.202332 v -0.419237 l -0.628856,0.628856"
        style="fill:none;fill-rule:evenodd;stroke:#000000;stroke-width:1px;stroke-linecap:butt;stroke-linejoin:miter;stroke-opacity:1" />
   </g>
 </svg>

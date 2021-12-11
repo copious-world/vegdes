@@ -8,7 +8,8 @@
    xmlns:sodipodi="http://sodipodi.sourceforge.net/DTD/sodipodi-0.dtd"
    xmlns:inkscape="http://www.inkscape.org/namespaces/inkscape"
    viewBox="0 0 51.04 49.47"
-   width="30" height="30"
+   width="30"
+   height="30"
    version="1.1"
    id="svg12"
    sodipodi:docname="star-tool.svg"
@@ -38,7 +39,7 @@
      id="namedview14"
      showgrid="false"
      inkscape:zoom="4.7705679"
-     inkscape:cx="25.52"
+     inkscape:cx="-13.25945"
      inkscape:cy="24.735001"
      inkscape:window-x="0"
      inkscape:window-y="0"
@@ -61,7 +62,7 @@
      style="fill:none" />
   <path
      style="fill:none;fill-rule:evenodd;stroke:#000000;stroke-width:2;stroke-linecap:butt;stroke-linejoin:miter;stroke-miterlimit:4;stroke-dasharray:none;stroke-opacity:1"
-     d="m 1,37.164946 v 11.305055 h 21.200852 l 0.309566,-0.213304"
+     d="M 1,11.124333 V -0.18072197 h 21.200852 l 0.309566,0.213304"
      id="path828"
      inkscape:connector-curvature="0" />
 </svg>
