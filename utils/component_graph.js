@@ -1,4 +1,25 @@
 
+	import { db_store} from '../utils/db-utils'
+
+	let g_db_store = null
+	let g_exportable = false
+    let g_db_ready = false
+    let g_db_storage_ref = false
+	db_store.subscribe((db_obj) => {
+		if ( !db_obj ) {
+			project_selected = false
+			g_db_store = null
+			g_exportable = false
+		} else {
+			g_db_store = db_obj
+			g_db_ready = db_obj.ready
+			g_exportable = db_obj.current_file_entry ? db_obj.current_file_entry.name : false
+            g_db_storage_ref = g_db_store.db_storage_ref[0]
+console.log(g_exportable)
+			if ( g_exportable === undefined || g_exportable === null ) g_exportable = false
+		}
+	})
+
 
 // ---- // ---- // ---- // ---- // ---- // ---- // ----
 // 
@@ -54,7 +75,7 @@ class Node {
         }
         for ( let oo in this.ouputs ) {
             let outp = this.ouputs[oo]
-            if ( inp.out_ref === old_id ) inp.out_ref = new_id
+            if ( outp.in_ref === old_id ) outp.in_ref = new_id
         }
     }
 
@@ -93,10 +114,23 @@ class ComponentGraph {
         this.svg_representation = ""    // not a thing at the moment
     }
 
+    async project_db_update() {
+        if ( g_db_storage_ref && g_exportable ) {
+            let svg = this.svg_representation
+            let description = g_db_store.current_file_entry.description
+            let to_layer = {
+                "nodes" : this.nodes,
+                "edges" : this.edges,
+                "display" : this.current_viz_graph
+            }
+            g_db_storage_ref.add_file(g_exportable,description,svg,to_layer)
+        }
+    }
+
     // 
     // add, get, del, find, etc.
 
-    add_viz_graph(z_list) {
+    async add_viz_graph(z_list) {
         //
         if ( Array.isArray(z_list) ) {
             this.current_viz_graph = z_list
@@ -134,6 +168,7 @@ class ComponentGraph {
             }
         }
         //
+        await this.project_db_update()
     }
 
     change_id(old_id,new_id,role) {

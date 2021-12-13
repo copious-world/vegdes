@@ -1746,7 +1746,7 @@ let object_text_size = 32
 	<ManageProject ui_target={g_visibile_items.project_manage}  />
 </Modal>
 
-<Modal visible={g_visibile_items.project_open} on:message={handle_modal_close}  positive_prompt={"Store"} >
+<Modal visible={g_visibile_items.project_open} on:message={handle_modal_close}  positive_prompt={"Restore"} >
 	<OpenProject ui_target={g_visibile_items.project_open} />
 </Modal>
 

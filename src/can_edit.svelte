@@ -126,7 +126,7 @@
 	// CONNECTORS
 	async function capture_save_state() {
 		if ( !drag_selection ) {
-			c_graph.add_viz_graph(z_list)
+			await c_graph.add_viz_graph(z_list)
 		}
 	}
 
