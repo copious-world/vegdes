@@ -8,13 +8,13 @@
     let input_connector_names = []
     $: if ( (local_component !== false) && local_component.stretching_inputs ) {
         input_connector_names = Object.keys(local_component.stretching_inputs)
-console.log("INPUTS",input_connector_names)
+//console.log("INPUTS",input_connector_names)
     }
 
     let output_connector_names = []
     $: if ( (local_component !== false) && local_component.stretching_outputs ) {
         output_connector_names = Object.keys(local_component.stretching_outputs)
-console.log("OUTPUTS",output_connector_names)
+//console.log("OUTPUTS",output_connector_names)
     }
 
 </script>

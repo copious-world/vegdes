@@ -125,7 +125,9 @@
 
 	// CONNECTORS
 	async function capture_save_state() {
-		c_graph.add_viz_graph(z_list)
+		if ( !drag_selection ) {
+			c_graph.add_viz_graph(z_list)
+		}
 	}
 
 	// ----
@@ -260,6 +262,13 @@
 	}
 
 
+	function neutral_command(cmd) {
+		if ( cmd === "redo_to" ) return true
+		if ( cmd === "undo_to" ) return true
+		return false
+	}
+
+
     g_commander.subscribe(async (command) => {
         //
         let cmd_pars = command.pars
@@ -268,7 +277,7 @@
 			//
 			let target = can_draw_selected
 			//
-			if ( target  ) {
+			if ( target || neutral_command(cmd) ) {
 				switch ( cmd ) {
 					case "clone" : {
 						let c_shape = can_draw_selected.shape
@@ -404,12 +413,12 @@
 						break;
 					}
 					case "undo_to" : {
-						let ith = cmd_pars.offset
+						let ith = -cmd_pars.offset
 						await redo_restore(ith)
 						break;
 					}
 					case "redo_to" : {
-						let ith = -cmd_pars.offset  // go in the other direction
+						let ith = cmd_pars.offset  // go in the other direction
 						await redo_restore(ith)
 						break;
 					}
@@ -467,7 +476,7 @@
 
 
 	async function parameters_update(pars) {
-		capture_save_state()  // go back to no clone if undo
+		//capture_save_state()  // go back to no clone if undo
 		//
 		draw_control.update(pars)
 		await tick()
@@ -478,7 +487,7 @@
 
 	async function group_parameters_update(pars,dif_x,dif_y) {
 		if ( can_draw_selected ) {
-			capture_save_state()  // go back to no clone if undo
+			//capture_save_state()  // go back to no clone if undo
 			//
 			draw_control.update(pars)
 			await tick()
@@ -503,7 +512,7 @@
 			draw_control.command("select_top")
 			await tick()
 			canvas_changed = true
-			await fetch_zlist()
+			//await fetch_zlist()
 		}
 	}
 
@@ -553,14 +562,11 @@
 	}
 
 	async function redo_restore(ith) {
-		let n = redo_list.size()
-		if ( n > 0 ) {
-			let a_z_list = redo_list.get(n - ith)
-			if ( a_z_list ) {
-				draw_control.command("z_list_replace",{ "z_list" : a_z_list })
-				await tick()
-				await capture_save_state()
-			}
+		let a_z_list = redo_list.offset_pointer(ith)
+		if ( a_z_list ) {
+			draw_control.command("z_list_replace",{ "z_list" : a_z_list })
+			await tick()
+			await capture_save_state()
 		}
 	}
 
@@ -1424,10 +1430,12 @@
 			//
 			if ( (shape_index !== false) && (shape_index >= 0) ) {
 				let sel_bounds = can_draw_selected.bounds
-				prev_select_left = sel_bounds[0] + doc_left/magnification // relative to the canvas
-				prev_select_top = sel_bounds[1] + doc_top/magnification
-				prev_select_width = sel_bounds[2]
-				prev_select_height = sel_bounds[3]
+				if ( sel_bounds !== undefined ) {
+					prev_select_left = sel_bounds[0] + doc_left/magnification // relative to the canvas
+					prev_select_top = sel_bounds[1] + doc_top/magnification
+					prev_select_width = sel_bounds[2]
+					prev_select_height = sel_bounds[3]
+				}
 				set_selection_controls(selection_on)
 				if ( selection_on ) {
 					if ( shift_key ) {	// alt_key  ctrl_key

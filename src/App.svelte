@@ -1307,12 +1307,12 @@ let object_text_size = 32
 
 	//
 	function do_undo(ev) {
-		command.command("undo_to",{ "offset" : 1 })
+		commander.command("undo_to",{ "offset" : 1 })
 	}
 
 	//
 	function do_redo(ev) {
-		command.command("redo_to",{ "offset" : 1 })		
+		commander.command("redo_to",{ "offset" : 1 })		
 	}
 
 
@@ -1380,11 +1380,11 @@ let object_text_size = 32
 
 
 <div class="top-panel">
-	<div class="bottom-menu-button" >
-		<img class="bottom-menu-item"  src="./images/undo.svg" alt="undo" title="undo" onclick={do_undo} />
+	<div class="bottom-menu-button"  on:click={do_undo} >
+		<img class="bottom-menu-item"  src="./images/undo.svg" alt="undo" title="undo" />
 	</div>
-	<div class="bottom-menu-button" >
-		<img class="v-left-menu-item"  src="./images/redo.svg" alt="redo" title="redo" onclick={do_redo} />
+	<div class="bottom-menu-button"  on:click={do_redo} >
+		<img class="v-left-menu-item"  src="./images/redo.svg" alt="redo" title="redo" />
 	</div>
 	<span style="color:white">|</span>
 	<div class="bottom-menu-button" on:click={do_clone_selected} >
