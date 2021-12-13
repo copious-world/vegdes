@@ -1,8 +1,3 @@
-import { writable } from 'svelte/store';
-
-
-//export let g_commander = writable(false)
-
 class RedoList {
 
     constructor() {

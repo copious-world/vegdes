@@ -1305,6 +1305,19 @@ let object_text_size = 32
 	}
 
 
+	//
+	function do_undo(ev) {
+		command.command("undo_to",{ "offset" : 1 })
+	}
+
+	//
+	function do_redo(ev) {
+		command.command("redo_to",{ "offset" : 1 })		
+	}
+
+
+
+
 
 	function toggle_grid(evt) {
 		g_show_grid = !g_show_grid
@@ -1365,12 +1378,13 @@ let object_text_size = 32
 </div>
 </div>
 
+
 <div class="top-panel">
 	<div class="bottom-menu-button" >
-		<img class="bottom-menu-item"  src="./images/undo.svg" alt="undo" title="undo" />
+		<img class="bottom-menu-item"  src="./images/undo.svg" alt="undo" title="undo" onclick={do_undo} />
 	</div>
 	<div class="bottom-menu-button" >
-		<img class="v-left-menu-item"  src="./images/redo.svg" alt="redo" title="redo" />
+		<img class="v-left-menu-item"  src="./images/redo.svg" alt="redo" title="redo" onclick={do_redo} />
 	</div>
 	<span style="color:white">|</span>
 	<div class="bottom-menu-button" on:click={do_clone_selected} >
@@ -1400,7 +1414,7 @@ let object_text_size = 32
 
 	{#if (selection_mode || g_free_mode) && selection_mode_var('rotate') }
 		<div class="bottom-menu-button" >
-			<img class="bottom-menu-item"  src="./images/angle.svg" alt="undo" title="undo" />
+			<img class="bottom-menu-item"  src="./images/angle.svg" alt="rotation" title="rotation" />
 		</div>
 		<input type=number  class="top-input"  bind:value={object_rotate} />
 	{/if}
@@ -1477,7 +1491,7 @@ let object_text_size = 32
 
 	{#if (g_selector || g_free_mode) && selection_mode_var('corner') }
 		<div class="bottom-menu-button" >
-			<img class="bottom-menu-item"  src="./images/c_radius.svg" alt="undo" title="undo" />
+			<img class="bottom-menu-item"  src="./images/c_radius.svg" alt="corner" title="corner" />
 		</div>
 		<input type=number  class="top-input"  bind:value={object_corner} />
 	{/if}

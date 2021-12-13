@@ -6,6 +6,7 @@
 
 	import { parameter_publisher } from './param_updates'
 	import { redo_list } from "./undo_redo"
+	import { c_graph } from "../utils/component_graph"
 
     export let height = 460
     export let width = 680
@@ -123,9 +124,8 @@
 
 
 	// CONNECTORS
-
 	async function capture_save_state() {
-		// TBD
+		c_graph.add_viz_graph(z_list)
 	}
 
 	// ----
@@ -405,12 +405,12 @@
 					}
 					case "undo_to" : {
 						let ith = cmd_pars.offset
-						redo_restore(ith)
+						await redo_restore(ith)
 						break;
 					}
 					case "redo_to" : {
-						let ith = -cmd_pars.offset
-						redo_restore(ith)
+						let ith = -cmd_pars.offset  // go in the other direction
+						await redo_restore(ith)
 						break;
 					}
 					case "colorize" : {
@@ -436,6 +436,7 @@
 						let connector_info = g_active_connections[old_id]
 						if ( connector_info ) {
 							capture_save_state()  // go back to no clone if undo
+							c_graph.change_id(old_id,new_id,'connector')
 							let connector = connector_info.connector
 							g_active_connections[new_id] = connector_info
 							connector.id = new_id
