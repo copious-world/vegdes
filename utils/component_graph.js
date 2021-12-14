@@ -1,5 +1,11 @@
 
 	import { db_store} from '../utils/db-utils'
+    import { writable } from 'svelte/store';
+
+    export let g_graph_control = writable(false)
+
+
+    let g_c_graph = false
 
 	let g_db_store = null
 	let g_exportable = false
@@ -15,7 +21,10 @@
 			g_db_ready = db_obj.ready
 			g_exportable = db_obj.current_file_entry ? db_obj.current_file_entry.name : false
             g_db_storage_ref = g_db_store.db_storage_ref[0]
-console.log(g_exportable)
+            if ( (g_c_graph !== undefined) && g_exportable && db_obj.current_file_entry ) {
+                //console.log(db_obj.current_file_entry)
+                g_c_graph.reset(db_obj.current_file_entry.layer)
+            }
 			if ( g_exportable === undefined || g_exportable === null ) g_exportable = false
 		}
 	})
@@ -30,6 +39,12 @@ class Node {
         this.inputs = {}        // keeping these independently of other representations such as shapes
         this.outputs = {}
         this.shape = shape_obj
+    }
+
+    reset(a_node) {
+        this.inputs = a_node.inputs
+        this.outputs = a_node.outputs
+        this.shape = a_node.shape
     }
 
     update(shape_obj) {
@@ -88,12 +103,24 @@ class Edge {
         this.out_ref = ""
         this.in_ref = ""
         this.shape = shape_obj
+        if ( shape_obj ) {
+            this.set_shape(shape_obj)
+        }
+    }
+
+    set_shape(shape_obj) {
         if ( shape_obj.input && shape_obj.input.id ) {
             this.in_ref = shape_obj.input.id
         }
         if ( shape_obj.output && shape_obj.output.id ) {
             this.out_ref = shape_obj.output.id            
         }
+    }
+
+    reset(an_edge) {
+        this.out_ref = an_edge.out_ref
+        this.in_ref = an_edge.in_ref
+        this.shape = an_edge.shape
     }
 
     update(shape_obj) {
@@ -111,6 +138,10 @@ class ComponentGraph {
         this.nodes = {} // id -> node record
         this.edges = {} // id -> edge record (refs two node id's or one id and nothing)
         this.current_viz_graph = []  // the z-list of a graph
+        //
+        this.active_connections_complete = false
+        this.active_connections = false
+        //
         this.svg_representation = ""    // not a thing at the moment
     }
 
@@ -121,16 +152,61 @@ class ComponentGraph {
             let to_layer = {
                 "nodes" : this.nodes,
                 "edges" : this.edges,
-                "display" : this.current_viz_graph
+                "display" : this.current_viz_graph,
+                "active_complete" : this.active_connections_complete,
+                "active" : this.active_connections
             }
-            g_db_storage_ref.add_file(g_exportable,description,svg,to_layer)
+            await g_db_storage_ref.add_file(g_exportable,description,svg,to_layer)
+        }
+    }
+
+
+    // ---- ---- ---- ---- ---- ---- ---- ---- ---- ----
+    //
+    reset(layer) {
+        if ( layer.nodes ) {
+            this.nodes = {}
+            for ( let nn in layer.nodes ) {
+                let a_node = new Node(false)
+                a_node.reset(layer.nodes[nn])
+                this.nodes[nn] = a_node
+            }
+        }
+        if ( layer.edges ) {
+            this.edges = {}
+            for ( let ee in layer.edges ) {
+                let an_edge = new Edge(false)
+                an_edge.reset(layer.edges[ee])
+                this.edges[ee] = an_edge
+            }
+        }
+        if ( layer.display ) {
+            this.active_connections_complete = layer.active_complete
+            this.active_connections = layer.active
+            this.current_viz_graph = layer.display
+            if ( g_graph_control ) {
+                g_graph_control.update( cmd => {
+                    let command = {
+                        "command" : 'from_project',
+                        "pars" : {
+                            "z_list" : this.current_viz_graph, 
+                            "active_complete" : this.active_connections_complete,
+                            "active" : this.active_connections
+                        }
+                    }
+                    return command
+                })    
+            }
         }
     }
 
     // 
     // add, get, del, find, etc.
-
-    async add_viz_graph(z_list) {
+    // add_viz_graph(z_list,g_active_connections_complete,g_active_connections)
+    async add_viz_graph(z_list,active_connections_complete,active_connections) {
+        //
+        this.active_connections_complete = active_connections_complete
+        this.active_connections = active_connections
         //
         if ( Array.isArray(z_list) ) {
             this.current_viz_graph = z_list
@@ -207,6 +283,7 @@ class ComponentGraph {
 }
 
 
+g_c_graph = new ComponentGraph()
 
 
-export let c_graph = new ComponentGraph()
+export let c_graph = g_c_graph

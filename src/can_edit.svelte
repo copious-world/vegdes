@@ -6,7 +6,7 @@
 
 	import { parameter_publisher } from './param_updates'
 	import { redo_list } from "./undo_redo"
-	import { c_graph } from "../utils/component_graph"
+	import { c_graph, g_graph_control } from "../utils/component_graph"
 
     export let height = 460
     export let width = 680
@@ -126,7 +126,7 @@
 	// CONNECTORS
 	async function capture_save_state() {
 		if ( !drag_selection ) {
-			await c_graph.add_viz_graph(z_list)
+			await c_graph.add_viz_graph(z_list,g_active_connections_complete,g_active_connections)
 		}
 	}
 
@@ -267,6 +267,32 @@
 		if ( cmd === "undo_to" ) return true
 		return false
 	}
+
+
+	g_graph_control.subscribe(async (command) => {
+        let cmd_pars = command.pars
+		if ( command.command !== undefined  ) {
+            let cmd = command.command
+			let cmd_pars = command.pars
+			switch ( cmd ) {
+				case "from_project" : {
+					//
+					let a_z_list = cmd_pars.z_list
+					if ( cmd_pars.active_complete ) {
+						g_active_connections_complete = cmd_pars.active_complete						
+					}
+					if ( cmd_pars.active ) {
+						g_active_connections = cmd_pars.active
+					}
+					//
+					draw_control.command("z_list_replace",{ "z_list" : a_z_list })
+					await tick()
+					//
+					break;
+				}
+			}
+		}
+	})
 
 
     g_commander.subscribe(async (command) => {
