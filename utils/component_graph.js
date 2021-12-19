@@ -5,6 +5,12 @@
     export let g_graph_control = writable(false)
 
 
+    function clonify(p) {
+        let b = JSON.parse(JSON.stringify(p))
+        return b
+    }
+
+
     let g_c_graph = false
 
 	let g_db_store = null
@@ -48,7 +54,33 @@ class Node {
     }
 
     update(shape_obj) {
-
+        if ( !shape_obj ) return
+        //
+        if ( shape_obj.shared === undefined ) {
+            shape_obj.shared = {
+                "id" : shape_obj.id,
+                /*
+                "stretching_inputs" : shape_obj.stretching_inputs,
+                "stretching_outputs" : shape_obj.stretching_outputs,
+                */
+                "path" : shape_obj.path  // until it changes 
+            }
+        } else {
+            if ( shape_obj.id !== shape_obj.shared.id ) {
+                shape_obj.shared.id =  shape_obj.id
+            }
+            if ( shape_obj.function === "node" ) {
+                /*
+                if ( shape_obj.stretching_inputs && (shape_obj.shared.stretching_inputs === undefined) ) {
+                    shape_obj.shared.stretching_inputs = shape_obj.stretching_inputs
+                }
+                if ( shape_obj.stretching_outputs && (shape_obj.shared.stretching_outputs === undefined) ) {
+                    shape_obj.shared.stretching_outputs = shape_obj.stretching_outputs
+                }
+                */
+            }
+        }
+        //
     }
 
     link_edges(edges) {
@@ -137,25 +169,57 @@ class ComponentGraph {
     constructor() {
         this.nodes = {} // id -> node record
         this.edges = {} // id -> edge record (refs two node id's or one id and nothing)
+        this.transitions  = {}
+        this.pre_arcs = {}
+        this.post_arcs = {}
+        //
+        this.db_layer = false
+        //
         this.current_viz_graph = []  // the z-list of a graph
+        //
         //
         this.active_connections_complete = false
         this.active_connections = false
         //
         this.svg_representation = ""    // not a thing at the moment
+
+        //
+        this.current_mode = "panel"
+        this.init_modes()
+        //
+    }
+
+    init_modes() {
+        this.modes = {
+            "panel" : {
+                current_viz_graph : [],
+                svg_representation : ""
+            },
+            "design" : {
+                current_viz_graph : [],
+                svg_representation : ""
+            },
+            "causal" : {
+                current_viz_graph : [],
+                svg_representation : ""
+            },
+        }
     }
 
     async project_db_update() {
+        let svg = this.svg_representation
+        let description = g_db_store ? g_db_store.current_file_entry.description : ""
+        let to_layer = {
+            "nodes" : this.nodes,
+            "edges" : this.edges,
+            "display" : this.current_viz_graph,
+            "active_complete" : this.active_connections_complete,
+            "active" : this.active_connections,
+            "modes" : this.modes,
+            "current_mode" : this.current_mode
+        }
+        this.db_layer = to_layer
         if ( g_db_storage_ref && g_exportable ) {
-            let svg = this.svg_representation
-            let description = g_db_store.current_file_entry.description
-            let to_layer = {
-                "nodes" : this.nodes,
-                "edges" : this.edges,
-                "display" : this.current_viz_graph,
-                "active_complete" : this.active_connections_complete,
-                "active" : this.active_connections
-            }
             await g_db_storage_ref.add_file(g_exportable,description,svg,to_layer)
         }
     }
@@ -163,7 +227,14 @@ class ComponentGraph {
 
     // ---- ---- ---- ---- ---- ---- ---- ---- ---- ----
     //
-    reset(layer) {
+    reset(layer,edit_command) {
+        //
+        this.modes = layer.modes
+        if ( this.modes === undefined ) {
+            this.init_modes()
+        }
+        this.current_mode = (layer.current_mode === undefined) ? "panel" : layer.current_mode
+        //
         if ( layer.nodes ) {
             this.nodes = {}
             for ( let nn in layer.nodes ) {
@@ -181,13 +252,12 @@ class ComponentGraph {
             }
         }
         if ( layer.display ) {
-            this.active_connections_complete = layer.active_complete
-            this.active_connections = layer.active
             this.current_viz_graph = layer.display
             if ( g_graph_control ) {
+                let e_com = edit_command ? edit_command : 'from_project'
                 g_graph_control.update( cmd => {
                     let command = {
-                        "command" : 'from_project',
+                        "command" : edit_command,
                         "pars" : {
                             "z_list" : this.current_viz_graph, 
                             "active_complete" : this.active_connections_complete,
@@ -200,16 +270,116 @@ class ComponentGraph {
         }
     }
 
+
+    async set_mode(edit_mode) {
+        if ( this.current_mode !== edit_mode ) {
+            //
+            let old_mode_fields = this.modes[this.current_mode]
+            let new_mode_fields = this.modes[edit_mode]
+            this.current_mode = edit_mode
+            //
+            old_mode_fields.current_viz_graph = this.current_viz_graph
+            old_mode_fields.svg_representation = this.svg_representation
+            //
+            this.current_viz_graph = new_mode_fields.current_viz_graph
+            this.svg_representation = new_mode_fields.svg_representation
+            this.db_layer.display = this.current_viz_graph
+            this.db_layer.current_mode = edit_mode
+            this.db_layer.svg_representation = this.svg_representation
+            //
+            this.reset(this.db_layer,'from_mode')
+        }
+    }
+
+    rectify_views(edit_mode) {
+        //
+        let panel_viz = this.modes["panel"].current_viz_graph
+        let design_viz = this.modes["design"].current_viz_graph
+        let causal_viz = this.modes["causal"].current_viz_graph
+        //
+        let panel_components = panel_viz.filter(descr => {
+            return ( descr.role === "component" )
+        })
+        let design_components = design_viz.filter(descr => {
+            return ( descr.role === "component" )
+        })
+        let causal_components = causal_viz.filter(descr => {
+            return ( descr.role === "component" )
+        })
+        //
+        let collector = {}  // a collection of components, which should be shared except for visual properties
+        for ( let dscr of panel_components ) {
+            collector[dscr.id] = [dscr,false,false]   // start with the panel... if added, then they occur without connectors
+        }
+        // now the design may have new components (connectors included)
+        for ( let dscr of design_components ) {
+            if ( collector[dscr.id] !== undefined ) {
+                collector[dscr.id][1] = dscr
+            } else {
+                collector[dscr.id] = [false,dscr,false]
+            }
+        }
+        // a component may be added to the causality graph --- arcs will not appear in the design 
+        // -- connectors in the design are communication paths.
+        // -- arcs are transition enablement paths
+        for ( let dscr of causal_components ) {
+            if ( collector[dscr.id] !== undefined ) {
+                collector[dscr.id][2] = dscr
+            } else {
+                collector[dscr.id] = [false,false,dscr]
+            }
+        }
+        //
+        for ( let id in collector ) {
+            let d_list = collector[id]
+            let [p,d,c] = d_list
+            //
+            let proto = p ? p : ( d ? d : c)  // pick the first view (all connector parts should be the same...)
+            if ( edit_mode === "panel" && p ) {
+                proto = p
+            } else if ( edit_mode === "design" && d ) {
+                proto = d
+            } else if ( edit_mode === "causal" && c ) {
+                proto = c
+            }
+            //
+            let shared = proto.shared
+            if ( !p ) {
+                p = clonify(proto)
+                panel_viz.push(p)
+            }
+            if ( !d ) {
+                d = clonify(proto)
+                design_viz.push(d)
+            }
+            if ( !c ) {
+                c = clonify(proto)
+                causal_viz.push(c)
+            }
+            //
+            p.shared = shared       // info the populate component definition editor...
+            d.shared = shared
+            c.shared = shared
+            //
+            for ( let sk in shared ) {
+                p[sk] = shared[sk]
+                d[sk] = shared[sk]
+                c[sk] = shared[sk]
+            }
+        }
+    }
+
     // 
     // add, get, del, find, etc.
     // add_viz_graph(z_list,g_active_connections_complete,g_active_connections)
-    async add_viz_graph(z_list,active_connections_complete,active_connections) {
+    async add_viz_graph(z_list,active_connections_complete,active_connections,edit_mode) {
         //
         this.active_connections_complete = active_connections_complete
         this.active_connections = active_connections
         //
         if ( Array.isArray(z_list) ) {
             this.current_viz_graph = z_list
+            this.modes[this.current_mode].current_viz_graph = z_list
             for ( let shape_obj of z_list ) {
                 if ( shape_obj.role === "connector" ) {
                     let c_id = shape_obj.id
@@ -244,9 +414,12 @@ class ComponentGraph {
             }
         }
         //
+        this.rectify_views(edit_mode)
+        //
         await this.project_db_update()
     }
 
+    
     change_id(old_id,new_id,role) {
         if ( role === "connector" ) {
             let e = this.edges[old_id]

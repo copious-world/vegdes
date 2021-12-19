@@ -31,6 +31,8 @@
 	export let selection_changed
 
 	export let group_selected = false
+	
+	let g_edit_mode = "panel"
 
 	let selection_on = false
 	let select_left = 0
@@ -126,7 +128,7 @@
 	// CONNECTORS
 	async function capture_save_state() {
 		if ( !drag_selection ) {
-			await c_graph.add_viz_graph(z_list,g_active_connections_complete,g_active_connections)
+			await c_graph.add_viz_graph(z_list,g_active_connections_complete,g_active_connections,g_edit_mode)
 		}
 	}
 
@@ -177,9 +179,9 @@
 
 
 	function connections_disconnect(connector,component,in_out) {
-		if ( in_out === 'in' ) {
+		if ( (in_out === 'in') && (component.stretching_inputs !== undefined) ) {
 			delete component.stretching_inputs[connector.id]
-		} else {
+		} else if (component.stretching_outputs !== undefined) {
 			delete component.stretching_outputs[connector.id]
 		}
 		break_connection(connector,component,in_out)
@@ -262,9 +264,47 @@
 	}
 
 
+
+	function inject_component(a_component) {
+
+	}
+
+
+	let drop_shape = false
+	async function handle_component_highlight(ev) {
+		draw_control.searching({ "mouse_loc" : [canvas_mouse.x/magnification,canvas_mouse.y/magnification] })
+		await tick()
+		if ( shape_index && can_draw_selected && (can_draw_selected.role === 'component') ) {
+			draw_control.command("hilight",{ 'index' : shape_index, "line" : "rgb(224,224,145)" })
+			drop_shape = shape_index
+		} else {
+			draw_control.command("hilight",{ 'index' : -1 })
+			drop_shape = false
+		}
+	}
+
+	async function handle_component_source(ev) {
+		ev.preventDefault();
+		let data = ev.dataTransfer.getData("text");
+		if ( drop_shape ) {
+			draw_control.command("select",{ 'index' : drop_shape })
+			await tick()
+			if ( can_draw_selected && can_draw_selected.role === "component") {
+				can_draw_selected.instantiation = data
+				inject_component(can_draw_selected)
+			}
+		}
+		draw_control.command("hilight",{ 'index' : -1 })
+		drop_shape = false
+	}
+
+	// ---- ---- ---- ---- ---- ---- ---- ---- ---- ---- ---- ---- ---- ---- ----
+	// ---- ---- ---- ---- ---- ---- ---- ---- ---- ---- ---- ---- ---- ---- ----
+
 	function neutral_command(cmd) {
 		if ( cmd === "redo_to" ) return true
 		if ( cmd === "undo_to" ) return true
+		if ( cmd === "mode") return true
 		return false
 	}
 
@@ -276,6 +316,21 @@
 			let cmd_pars = command.pars
 			switch ( cmd ) {
 				case "from_project" : {
+					//
+					let a_z_list = cmd_pars.z_list
+					if ( cmd_pars.active_complete ) {
+						g_active_connections_complete = cmd_pars.active_complete						
+					}
+					if ( cmd_pars.active ) {
+						g_active_connections = cmd_pars.active
+					}
+					//
+					draw_control.command("z_list_replace",{ "z_list" : a_z_list })
+					await tick()
+					//
+					break;
+				}
+				case "from_mode" : {
 					//
 					let a_z_list = cmd_pars.z_list
 					if ( cmd_pars.active_complete ) {
@@ -305,6 +360,13 @@
 			//
 			if ( target || neutral_command(cmd) ) {
 				switch ( cmd ) {
+					case "mode" : {
+						let edit_mode = cmd_pars.mode
+						await c_graph.add_viz_graph(z_list,g_active_connections_complete,g_active_connections,g_edit_mode)
+						g_edit_mode = edit_mode
+						await c_graph.set_mode(edit_mode)
+						break;
+					}
 					case "clone" : {
 						let c_shape = can_draw_selected.shape
 						if ( c_shape === "group" )  {
@@ -1411,8 +1473,10 @@
 			} else {
 				cpars = tool_parameters.parameters
 			}
+			let a_function = "compute"			/// otherwise transition or node....
 			draw_control.add("rect",{
 				"role" : "component",
+				"function" : a_function,
 				"id" : gen_id(),
 				"thick" : cpars.thick, 
 				"line" : cpars.line, 
@@ -1424,8 +1488,10 @@
 			selection_on = false
 			set_selection_controls(false)
 			drawing = true
+			let a_function = "com"	// otheriwse pre_arc or post_arc
 			draw_control.add("line",{
 				"role" : "connector",
+				"function" : a_function,
 				"id" : gen_id(),
 				"thick" : tool_parameters.parameters.thick, 
 				"line" : tool_parameters.parameters.line, 
@@ -1818,7 +1884,7 @@
 */
 
 </script>
-<div bind:this={drag_region} on:mousedown={start_tracking} on:mouseup={stop_tracking} style="height:inherit;width:inherit" on:mousemove={reposition} on:mouseup={stop_drags}>
+<div bind:this={drag_region} on:mousedown={start_tracking} on:mouseup={stop_tracking} style="height:inherit;width:inherit" on:mousemove={reposition} on:mouseup={stop_drags}  on:drop={handle_component_source} on:dragover={handle_component_highlight}>
 	<CanDraw bind:internal_draw={draw_cautious} bind:selected={can_draw_selected} bind:mouse_to_shape={shape_index} bind:secondary_shape={connector_index} bind:multi_select={multi_selected} bind:canvas_mouse={canvas_mouse}  bind:canvas_changed={canvas_changed} bind:z_list={z_list} {height} {width} {doc_left} {doc_top} {doc_width} {doc_height}  />
 	<div bind:this={selection_box} class="selection-box" style={selection_style} on:mousedown|capture|preventDefault|stopPropagation={grab_selection} >&nbsp</div>
 	<div bind:this={handle_box_tl} class="handle-box top-left-c" style={handle_top_left_style} on:mousedown|capture|preventDefault|stopPropagation={grab_handle} >&nbsp</div>

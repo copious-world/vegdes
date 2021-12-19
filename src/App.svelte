@@ -23,7 +23,7 @@
 	import {db_startup, db_store} from '../utils/db-utils'
 
 	import CanEdit from './can_edit.svelte'
-	import { commander } from './edit_commands'
+	import { commander, g_commander } from './edit_commands'
 	import { g_select_parameters } from './param_updates'
 
 	// https://github.com/agrinko/js-undo-manager
@@ -38,7 +38,7 @@
 // https://jsfiddle.net/richardcwc/cvem3wuv/
 // https://www.tutorialrepublic.com/html-tutorial/html5-canvas.php
 // https://github.com/ericdrowell/concrete
-//
+// https://www.sciencedirect.com/science/article/pii/B9781483214481500184
 
 	let project_selected = false
 	let g_db_store = null
@@ -102,6 +102,9 @@
 	let g_calc_doc_height = g_doc_height
 
 	let g_regular_shape = false
+
+	let edit_mode = 'panel'
+	let prev_edit_mode = edit_mode
 
 
 	let g_current_selection_object = false
@@ -212,6 +215,12 @@
 
 	let g_selected_component = false
 	let g_selected_connector = false
+
+
+	$: if ( edit_mode !== prev_edit_mode ) {
+		prev_edit_mode = edit_mode
+		commander.command("mode",{ "mode" : edit_mode })
+	}
 
 	$: edit_props = {
 		'width' : g_calc_doc_width,
@@ -1371,8 +1380,22 @@ let object_text_size = 32
 	<div class="v-left-menu-button" on:click={ (evt) => { g_selector = (mode_toggle === 'component'); set_selection_mode('component') } } >
 		<img class="v-left-menu-item"  src="./images/gears.svg" alt="component" title="component" />
 	</div>
+	{#if (edit_mode !== 'panel') } 
 	<div class="v-left-menu-button" on:click={ (evt) => { g_selector = (mode_toggle === 'connector'); set_selection_mode('connector') } } >
 		<img class="v-left-menu-item"  src="./images/conn.svg" alt="connector" title="connector" />
+	</div>
+	{/if}
+	<div class="v-left-menu-button mode-button">
+		Mode<br>
+		<label class="mode-label" for="panel">panel</label>
+		<input type='radio' name="mode" bind:group={edit_mode} value="panel">
+		<label class="mode-label" for="design">design</label>
+		<input type='radio' name="mode" bind:group={edit_mode} value="design">
+		<label class="mode-label" for="causal">causal</label>
+		<input type='radio' name="mode"bind:group={edit_mode}  value="causal">
+	</div>
+	<div class="v-left-menu-button mode-button">
+	{edit_mode}
 	</div>
 
 </div>
@@ -1855,6 +1878,28 @@ let object_text_size = 32
 		text-align:center;
 		vertical-align: middle;
 		border-radius: 15%;
+	}
+
+	.mode-button {
+		font-size: 68%;
+		font-weight:bold;
+		font-style: italic;
+		color:greenyellow;
+		box-shadow: 2px 2px honeydew;
+	}
+
+	.mode-button > input {
+		cursor:pointer;
+	}
+
+	.mode-label {
+		font-size: 68%;
+		font-weight:bold;
+		font-style:normal;
+		color:indigo;
+		background-color: ivory;
+		border-top: solid 1px darkslateblue;
+		margin-bottom:4px;
 	}
 
 	.bottom-menu-button {
