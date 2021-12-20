@@ -25,6 +25,7 @@
 	export let tool = "select"
 	export let tool_parameters = false
 	export let component_defaults = false
+	export let transition_defaults = false
 	export let shape = "rect"
 
 	export let selected_objects
@@ -718,13 +719,19 @@
 		if ( drawing ) {
 			if ( can_draw_selected ) {
 				if ( can_draw_selected.shape === 'rect' || can_draw_selected.shape === 'group' ) {
-					let points = can_draw_selected.pars.points
-					let new_left = mouse_x - points[0]
-					if ( new_left > 0 ) { points[2] = new_left }
-					let new_top = mouse_y - points[1]
-					if ( new_top > 0 ) { points[3] = new_top }
-					let new_pars = Object.assign(can_draw_selected.pars,{ 'points': points })
-					parameters_update(new_pars)
+					let skip = false
+					if ( can_draw_selected.role === "component" ) {
+						if ( can_draw_selected.function !== "compute" ) skip = true
+					}
+					if ( !skip ) {
+						let points = can_draw_selected.pars.points
+						let new_left = mouse_x - points[0]
+						if ( new_left > 0 ) { points[2] = new_left }
+						let new_top = mouse_y - points[1]
+						if ( new_top > 0 ) { points[3] = new_top }
+						let new_pars = Object.assign(can_draw_selected.pars,{ 'points': points })
+						parameters_update(new_pars)
+					}
 				} else if ( can_draw_selected.shape === 'ellipse' ) {
 					let points = can_draw_selected.pars.points
 					let new_left = mouse_x - points[0]
@@ -907,6 +914,10 @@
 	async function _update_target_object(target_draw_shape,dx,dy,xchange,ychange,diff_source,option_key) {
 		if ( target_draw_shape ) {
 			if ( target_draw_shape.shape === 'rect' || target_draw_shape.shape === 'group' ) {
+				let block_resize = false
+				if ( (target_draw_shape.role  === 'component' ) && (target_draw_shape.function !== "compute" ) ) {
+					block_resize = true
+				}
 				let points = target_draw_shape.pars.points
 				if ( diff_source ) {
 					if ( diff_source === handle_box_tl) {
@@ -925,8 +936,8 @@
 					points[0] += dx
 					points[1] += dy
 				}
-				if ( xchange ) points[2] = select_width
-				if ( ychange ) points[3] = select_height
+				if ( xchange && !block_resize ) points[2] = select_width
+				if ( ychange && !block_resize ) points[3] = select_height
 				let new_pars = Object.assign(target_draw_shape.pars,{ 'points': points })
 				if ( target_draw_shape.shape === 'group' ) {
 					multi_selection(option_key)
@@ -1412,6 +1423,9 @@
 		if ( tool === "component" ) {
 			return true
 		}  // maybe for other line types as well
+		if ( tool === "transition" ) {
+			return true
+		}
 		return false
 	}
 
@@ -1483,15 +1497,35 @@
 				cpars = tool_parameters.parameters
 			}
 			let a_function = "compute"			/// otherwise transition or node....
+			let initial_w = 2
+			let initial_h = 2
+			let fill_p =  cpars.fill	// property
+			let line_p = cpars.line		// property
+			let thick_p = cpars.thick
+			let dashed_p = cpars.line_dash
+			if ( tool === "transition" ) {
+				a_function = "transition"
+				if ( transition_defaults ) {
+					initial_w = transition_defaults.width
+					initial_h = transition_defaults.height
+				} else {
+					initial_w = 8
+					initial_h = 20
+				}
+				fill_p = "rgb(0,0,0)"
+				dashed_p = []
+				thick_p = 1
+				line_p = "none"
+			}
 			draw_control.add("rect",{
 				"role" : "component",
 				"function" : a_function,
 				"id" : gen_id(),
-				"thick" : cpars.thick, 
-				"line" : cpars.line, 
-				"fill" : cpars.fill,
-				"line_dash" : cpars.line_dash,
-				"points" : [mouse_x,mouse_y,2,2] })
+				"thick" : thick_p, 
+				"line" : line_p, 
+				"fill" : fill_p,
+				"line_dash" : dashed_p,
+				"points" : [mouse_x,mouse_y,initial_w,initial_h] })
 			change_selection("select_top")
 		} else if ( is_connector(tool) ) {
 			selection_on = false

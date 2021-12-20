@@ -118,6 +118,12 @@
 				"fill" : "rgba(170,170,170,0.75)"
 			}
 		}
+	
+	let g_transition_defaults = {
+		'width' : 8,
+		'height' : 28
+	}
+
 
 
 
@@ -159,6 +165,7 @@
 		'tool' : "select",
 		'tool_parameters' : g_current_parameters,
 		'component_defaults' : g_component_defaults,
+		'transition_defaults' : g_transition_defaults,
 		'shape' : 'rect'
 	}
 
@@ -236,7 +243,8 @@
 		'tool' : g_current_tool,
 		'tool_parameters' : g_current_parameters,
 		'component_defaults' : g_component_defaults,
-		'shape' : g_current_shape
+		'transition_defaults' : g_transition_defaults,
+		'shape' : g_current_shape 
 	}
 
 
@@ -295,6 +303,7 @@
 	let star_selected = false
 	let picture_selected = false
 	let component_selected = false
+	let transition_selected = false
 	let eye_dropper_selected = false
 	let connector_selected = false
 	let group_selected = false
@@ -325,6 +334,7 @@
 		star_selected = false
 		picture_selected = false
 		component_selected = false
+		transition_selected = false
 		eye_dropper_selected = false
 		connector_selected = false
 		// group_selected = false
@@ -406,6 +416,12 @@
 				selection_mode = true
 				component_selected = true
 				tool_cursor = `url(./images/component-tool.svg), auto`
+				break
+			}
+			case 'transition': {
+				selection_mode = true
+				transition_selected = true
+				tool_cursor = `url(./images/transition-tool.svg), auto`
 				break
 			}
 			case 'eye_dropper': {
@@ -568,6 +584,7 @@
 	let polygon_names = ["x", "y", "r", "sides"]
 	let star_names = ["x", "y", "r", "points", "pointiness", "radial-shift", "radius-multiplier"]
 	let component_names = ["x", "y", "w", "h"]
+	let transition_names = ["x", "y"]
 	let group_names = ["x", "y", "group", "relative", "align-left", "align-center", "align-right", "align-top", "align-middle", "align-bottom"]
 	let grouped_names = ["x", "y", "label", "ungroup" ]
 	let curve_names = ["x1", "y1", "x2", "y2", "curve", "clone-node", "delete-node", "subpath", "add-subpath" ]
@@ -583,6 +600,7 @@
 		"star" : star_names,
 		"text" : text_names,
 		"component" : component_names,
+		"transition" : transition_names,
 		"connector" : connector_names,
 		"path" : path_names,
 		"bezier" : curve_names,
@@ -726,6 +744,9 @@
 			return true
 		}
 		if ( component_selected  && component_names.indexOf(var_name) >= 0 ) {
+			return true
+		}
+		if ( transition_selected  && transition_names.indexOf(var_name) >= 0 ) {
 			return true
 		}
 		return false
@@ -1353,12 +1374,16 @@ let object_text_size = 32
 	<div class="v-left-menu-button" on:click={ (evt) => { g_selector = (mode_toggle === 'select'); set_selection_mode('select') } } >
 		<img class="v-left-menu-item"  src="./images/select.svg" alt="select" title="select" />
 	</div>
+	{#if (edit_mode === 'panel') } 
 	<div class="v-left-menu-button" on:click={ (evt) => { g_selector = (mode_toggle === 'pencil'); set_selection_mode('pencil') } } >
 		<img class="v-left-menu-item"  src="./images/pencil.svg" alt="pencil" title="pencil" />
 	</div>
+	{/if}
+	{#if (edit_mode === 'panel') } 
 	<div class="v-left-menu-button" on:click={ (evt) => { g_selector = (mode_toggle === 'pen'); set_selection_mode('pen') } } >
 		<img class="v-left-menu-item"  src="./images/pen.svg" alt="pen" title="pen" />
 	</div>
+	{/if}
 	<div class="v-left-menu-button" on:click={ (evt) => { g_selector = (mode_toggle === 'path'); set_selection_mode('path') } }  >
 		<img class="v-left-menu-item"  src="./images/path.svg" alt="path" title="path" />
 	</div>
@@ -1371,15 +1396,22 @@ let object_text_size = 32
 	<div class="v-left-menu-button" on:click={ (evt) => { g_selector = (mode_toggle === 'polygon'); set_selection_mode('polygon') } } >
 		<img class="v-left-menu-item"  src="./images/polygon.svg" alt="polygon" title="polygon" />
 	</div>
+	{#if (edit_mode === 'panel') } 
 	<div class="v-left-menu-button" on:click={ (evt) => { g_selector = (mode_toggle === 'star'); set_selection_mode('star') } } >
 		<img class="v-left-menu-item"  src="./images/star.svg" alt="star" title="postarlygon" />
 	</div>
+	{/if}
 	<div class="v-left-menu-button" on:click={ (evt) => { g_selector = (mode_toggle === 'text'); set_selection_mode('text') } } >
 		<img class="v-left-menu-item"  src="./images/text.svg" alt="text" title="text" />
 	</div>
 	<div class="v-left-menu-button" on:click={ (evt) => { g_selector = (mode_toggle === 'component'); set_selection_mode('component') } } >
 		<img class="v-left-menu-item"  src="./images/gears.svg" alt="component" title="component" />
 	</div>
+	{#if (edit_mode === 'causal') } 
+	<div class="v-left-menu-button" on:click={ (evt) => { g_selector = (mode_toggle === 'transition'); set_selection_mode('transition') } } >
+		<img class="v-left-menu-item"  src="./images/transition.svg" alt="transition" title="transition" />
+	</div>
+	{/if}
 	{#if (edit_mode !== 'panel') } 
 	<div class="v-left-menu-button" on:click={ (evt) => { g_selector = (mode_toggle === 'connector'); set_selection_mode('connector') } } >
 		<img class="v-left-menu-item"  src="./images/conn.svg" alt="connector" title="connector" />

@@ -59,25 +59,26 @@ class Node {
         if ( shape_obj.shared === undefined ) {
             shape_obj.shared = {
                 "id" : shape_obj.id,
-                /*
-                "stretching_inputs" : shape_obj.stretching_inputs,
-                "stretching_outputs" : shape_obj.stretching_outputs,
-                */
                 "path" : shape_obj.path  // until it changes 
             }
         } else {
             if ( shape_obj.id !== shape_obj.shared.id ) {
                 shape_obj.shared.id =  shape_obj.id
             }
-            if ( shape_obj.function === "node" ) {
-                /*
-                if ( shape_obj.stretching_inputs && (shape_obj.shared.stretching_inputs === undefined) ) {
-                    shape_obj.shared.stretching_inputs = shape_obj.stretching_inputs
+        }
+        if ( shape_obj.function === "compute" ) {
+            if ( shape_obj.refed == undefined ) {
+                shape_obj.refed = {
+                    "stretching_inputs" : shape_obj.stretching_inputs,
+                    "stretching_outputs" : shape_obj.stretching_outputs
                 }
-                if ( shape_obj.stretching_outputs && (shape_obj.shared.stretching_outputs === undefined) ) {
-                    shape_obj.shared.stretching_outputs = shape_obj.stretching_outputs
+            } else {
+                if ( shape_obj.stretching_inputs !== undefined ) {
+                    shape_obj.refed.stretching_inputs = shape_obj.stretching_inputs
                 }
-                */
+                if ( shape_obj.stretching_outputs !== undefined ) {
+                    shape_obj.refed.stretching_outputs = shape_obj.stretching_outputs
+                }
             }
         }
         //
@@ -298,13 +299,13 @@ class ComponentGraph {
         let causal_viz = this.modes["causal"].current_viz_graph
         //
         let panel_components = panel_viz.filter(descr => {
-            return ( descr.role === "component" )
+            return ( (descr.role === "component") && (descr.function === "compute") )
         })
         let design_components = design_viz.filter(descr => {
-            return ( descr.role === "component" )
+            return ( (descr.role === "component") && (descr.function === "compute") )
         })
         let causal_components = causal_viz.filter(descr => {
-            return ( descr.role === "component" )
+            return ( (descr.role === "component") && (descr.function === "compute") )
         })
         //
         let collector = {}  // a collection of components, which should be shared except for visual properties
@@ -344,6 +345,7 @@ class ComponentGraph {
             }
             //
             let shared = proto.shared
+            let refed = d ? d.refed : proto.refed
             if ( !p ) {
                 p = clonify(proto)
                 panel_viz.push(p)
@@ -366,6 +368,12 @@ class ComponentGraph {
                 d[sk] = shared[sk]
                 c[sk] = shared[sk]
             }
+
+            // refereneced but not promoted
+            p.refed = refed       // info the populate component definition editor...
+            d.refed = refed
+            c.refed = refed
+            //
         }
     }
 
