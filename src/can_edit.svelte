@@ -327,6 +327,7 @@
 					//
 					draw_control.command("z_list_replace",{ "z_list" : a_z_list })
 					await tick()
+					await fetch_zlist()
 					//
 					break;
 				}
@@ -342,6 +343,7 @@
 					//
 					draw_control.command("z_list_replace",{ "z_list" : a_z_list })
 					await tick()
+					await fetch_zlist()
 					//
 					break;
 				}
@@ -361,6 +363,13 @@
 			if ( target || neutral_command(cmd) ) {
 				switch ( cmd ) {
 					case "mode" : {
+						if ( (shape_index !== false) && (shape_index >= 0) ) {
+							draw_control.command("remove_top_if_empty_group",{ 'except' : shape_index })
+							await tick()
+						}
+						set_selection_controls(false)
+						await tick()
+						//
 						let edit_mode = cmd_pars.mode
 						await c_graph.add_viz_graph(z_list,g_active_connections_complete,g_active_connections,g_edit_mode)
 						g_edit_mode = edit_mode
