@@ -290,7 +290,7 @@
 		if ( drop_shape ) {
 			draw_control.command("select",{ 'index' : drop_shape })
 			await tick()
-			if ( can_draw_selected && can_draw_selected.role === "component") {
+			if ( can_draw_selected && (can_draw_selected.role === 'component') ) {
 				can_draw_selected.instantiation = data
 				inject_component(can_draw_selected)
 			}
@@ -667,7 +667,7 @@
 			await capture_save_state()
 		}
 	}
-
+	
 
 	let selection_active = false
 	$: {
@@ -720,7 +720,7 @@
 			if ( can_draw_selected ) {
 				if ( can_draw_selected.shape === 'rect' || can_draw_selected.shape === 'group' ) {
 					let skip = false
-					if ( can_draw_selected.role === "component" ) {
+					if ( can_draw_selected.role === 'component' ) {
 						if ( can_draw_selected.function !== "compute" ) skip = true
 					}
 					if ( !skip ) {
@@ -915,7 +915,7 @@
 		if ( target_draw_shape ) {
 			if ( target_draw_shape.shape === 'rect' || target_draw_shape.shape === 'group' ) {
 				let block_resize = false
-				if ( (target_draw_shape.role  === 'component' ) && (target_draw_shape.function !== "compute" ) ) {
+				if ( (target_draw_shape.role  === 'component' ) && (target_draw_shape.function !== 'compute' ) ) {
 					block_resize = true
 				}
 				let points = target_draw_shape.pars.points
@@ -1028,7 +1028,8 @@
 				}
 				//
 				let new_pars = Object.assign(target_draw_shape.pars,{ 'points': points })
-				if ( option_key ) {
+				//
+				if ( (target_draw_shape.role === 'connector') ) {  // check connector type...
 					let proximities = await proximity_check(points,target_draw_shape.disposition)
 					if ( proximities ) {
 						register_connections(target_draw_shape,proximities)
