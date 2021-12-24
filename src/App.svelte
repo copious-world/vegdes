@@ -953,9 +953,15 @@
 		let and_also_causal =  false
 		//
 		if ( g_current_selection_object && g_current_selection_object.included_views ) {
-			and_also_panel = g_current_selection_object.included_views['panel']
-			and_also_design = g_current_selection_object.included_views['design']
-			and_also_causal = g_current_selection_object.included_views['causal']
+	console.log(g_current_selection_object.included_views)
+			let view_it = g_current_selection_object.included_views['panel']
+			and_also_panel = (view_it === undefined) ? false : view_it
+			//
+			view_it = g_current_selection_object.included_views['design']
+			and_also_design = (view_it === undefined) ? false : view_it
+			//
+			view_it = g_current_selection_object.included_views['causal']
+			and_also_causal = (view_it === undefined) ? false : view_it
 		} else {
 			show_on_panel = false
 			show_on_design = false

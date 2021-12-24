@@ -1214,7 +1214,7 @@
 
 	async function startup_new_text() {
 		draw_control.add("text",{ "id" : gen_id(),
-									"included_views" : {},
+									"included_views" : { "panel" : (g_edit_mode === "panel"), "design" : (g_edit_mode === "design"), "causal" : (g_edit_mode === "causal") },
 									"thick" : tool_parameters.parameters.thick, 
 									"line" : tool_parameters.parameters.line, 
 									"fill" : tool_parameters.parameters.fill, 
@@ -1510,7 +1510,7 @@
 			drawing = true
 			draw_control.add("rect",{ 
 				"id" : gen_id(),
-				"included_views" : {},
+				"included_views" : { "panel" : (g_edit_mode === "panel"), "design" : (g_edit_mode === "design"), "causal" : (g_edit_mode === "causal") },
 				"thick" : tool_parameters.parameters.thick, 
 				"line" : tool_parameters.parameters.line, 
 				"fill" : tool_parameters.parameters.fill, 
@@ -1529,7 +1529,7 @@
 			tool_parameters.parameters.points = [mouse_x,mouse_y,2,2]
 			let pars = object_clone(tool_parameters.parameters)
 			pars.id = gen_id()
-			pars.included_views = {}
+			pars.included_views = { "panel" : (g_edit_mode === "panel"), "design" : (g_edit_mode === "design"), "causal" : (g_edit_mode === "causal") }
 			draw_control.add(tool_parameters.shape,pars)
 			change_selection("select_top")
 			//
@@ -1540,7 +1540,7 @@
 			drawing = true
 			draw_control.add("line",{
 				"id" : gen_id(),
-				"included_views" : {},
+				"included_views" : { "panel" : (g_edit_mode === "panel"), "design" : (g_edit_mode === "design"), "causal" : (g_edit_mode === "causal") },
 				"thick" : tool_parameters.parameters.thick, 
 				"line" : tool_parameters.parameters.line, 
 				"fill" : tool_parameters.parameters.fill,

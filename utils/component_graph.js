@@ -433,6 +433,33 @@ class ComponentGraph {
             })
             this.modes[edit_mode].current_viz_graph = update_viz
         }
+
+        let descr = false
+        //
+        let panel_viz = this.modes["panel"].current_viz_graph        
+        descr = panel_viz.find((el) => {
+            return (el.id === shape_obj.id)
+        })
+        if ( descr !== undefined ) {
+            descr.included_views = shape_obj.included_views
+        }
+
+        let design_viz = this.modes["design"].current_viz_graph
+        descr = design_viz.find((el) => {
+            return (el.id === shape_obj.id)
+        })
+        if ( descr !== undefined ) {
+            descr.included_views = shape_obj.included_views
+        }
+
+        let causal_viz = this.modes["causal"].current_viz_graph
+        descr = causal_viz.find((el) => {
+            return (el.id === shape_obj.id)
+        })
+        if ( descr !== undefined ) {
+            descr.included_views = shape_obj.included_views
+        }
+        
     }
 
 
