@@ -377,6 +377,65 @@ class ComponentGraph {
         }
     }
 
+    // ----
+    async remove_viz_graph(descr_sel) {
+        //
+        let eliminate_id = descr_sel.id
+        let panel_viz = this.modes["panel"].current_viz_graph
+        let design_viz = this.modes["design"].current_viz_graph
+        let causal_viz = this.modes["causal"].current_viz_graph
+        //
+        let panel_viz_update = panel_viz.filter(descr => {
+            return ( descr.id !== eliminate_id)
+        })
+        let design_viz_update = design_viz.filter(descr => {
+            return ( descr.id !== eliminate_id)
+        })
+        let causal_viz_update = causal_viz.filter(descr => {
+            return ( descr.id !== eliminate_id)
+        })
+        //
+        this.modes["panel"].current_viz_graph = panel_viz_update
+        this.modes["design"].current_viz_graph = design_viz_update
+        this.modes["causal"].current_viz_graph = causal_viz_update
+        //
+
+        delete this.nodes[eliminate_id]
+
+        if ( this.stretching_inputs ) {
+            for ( let e_id in this.stretching_inputs ) {
+                let edge = this.stretching_inputs[e_id]
+                edge.input = false
+            }
+        }
+        if ( this.stretching_outputs ) {
+            for ( let e_id in this.stretching_outputs ) {
+                let edge = this.stretching_outputs[e_id]
+                edge.output = false
+            }
+        }
+        
+    }
+
+    change_in_mode(shape_obj,edit_mode,include_it) {        // dealing with pure shapes ... no connector troubles
+        let mode_viz = this.modes[edit_mode].current_viz_graph
+        //
+        if ( include_it ) {
+            let descr = mode_viz.find((el) => {
+                return (el.id === shape_obj.id)
+            })
+            if ( descr === undefined ) {
+                mode_viz.push(shape_obj)
+            }
+        } else {
+            let update_viz = mode_viz.filter((el) => {
+                return ( el.id !== shape_obj.id )
+            })
+            this.modes[edit_mode].current_viz_graph = update_viz
+        }
+    }
+
+
     // 
     // add, get, del, find, etc.
     // add_viz_graph(z_list,g_active_connections_complete,g_active_connections)

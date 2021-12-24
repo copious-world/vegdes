@@ -133,6 +133,31 @@
 		}
 	}
 
+
+	async function remove_from_views(target_selected) {
+		let c_shape = can_draw_selected.shape
+		if ( c_shape === "group" )  {
+			//
+			let sel_list = [].concat(target_selected.select_list)
+			sel_list.sort()
+			sel_list.pop()
+			sel_list.reverse()
+			//
+			let exclusions = target_selected.exclusion_list
+			for ( let ith of sel_list ) {
+				if ( exclusions && Array.isArray(exclusions) ) {
+					if ( exclusions.indexOf(ith) >= 0 ) continue
+				}
+				let descr = draw_cautious.ith_object(ith)
+				if ( (descr.role === "component") && (descr.function === "compute") ) {
+					await c_graph.remove_viz_graph(descr)
+				}
+			}
+		} else {
+			await c_graph.remove_viz_graph(target_selected)
+		}
+	}
+
 	// ----
 	function indexer_from_disposition(disposition,start_point) {
 		let l_indexer = { 'x' : 0, 'y' : 1 }
@@ -377,6 +402,13 @@
 						await c_graph.set_mode(edit_mode)
 						break;
 					}
+					case "update_view_exposure" : {
+						let target_mode = cmd_pars.mode
+						let shape_obj = cmd_pars.descriptor
+						let include_it = cmd_pars.include
+						await c_graph.change_in_mode(shape_obj,target_mode,include_it)
+						break;
+					}
 					case "clone" : {
 						let c_shape = can_draw_selected.shape
 						if ( c_shape === "group" )  {
@@ -402,7 +434,7 @@
 								mem_pars.points[0] += dx
 								mem_pars.points[1] += dy
 								//
-								draw_control.add(member_shape,mem_pars)
+								draw_control.add(member_shape,mem_pars)    // added new shape of group
 								await tick()
 							}
 							draw_control.command("send_top",{ "select" : selector })
@@ -411,6 +443,7 @@
 							await tick()
 							canvas_changed = true
 							await fetch_zlist()
+							capture_save_state()		// register new components with different views
 						} else {
 							capture_save_state()  // go back to no clone if undo
 							let c_pars = JSON.parse(JSON.stringify(can_draw_selected.pars))
@@ -421,17 +454,19 @@
 							select_left += dx
 							select_top += dy
 							//
-							draw_control.add(c_shape,c_pars)
+							draw_control.add(c_shape,c_pars)			// add new single shape
 							await tick()
 							draw_control.command("select_top")
 							await tick()
 							canvas_changed = true
 							await fetch_zlist()
+							capture_save_state()		// register new components with different views
 						}
 						break;
 					}
 					case "delete" : {
 						capture_save_state()  // go back to element exists if undo
+						remove_from_views(can_draw_selected)
 						draw_control.command("remove_selected")
 						await tick()
 						set_selection_controls(false)
@@ -667,7 +702,7 @@
 			await capture_save_state()
 		}
 	}
-	
+
 
 	let selection_active = false
 	$: {
@@ -699,6 +734,7 @@
 		}
     }
 
+	// manage drawing...  
     $: if ( draw_control ) {
         draw_control.command("set_grid",{"interval" : grid_interval, "grid_on" : grid_on })
     }
@@ -732,7 +768,7 @@
 						let new_pars = Object.assign(can_draw_selected.pars,{ 'points': points })
 						parameters_update(new_pars)
 					}
-				} else if ( can_draw_selected.shape === 'ellipse' ) {
+				} else if ( (can_draw_selected.shape === 'ellipse') || (can_draw_selected.shape === 'polygon') ) {
 					let points = can_draw_selected.pars.points
 					let new_left = mouse_x - points[0]
 					if ( new_left > 0 ) { points[2] = new_left/2 }
@@ -740,7 +776,7 @@
 					if ( new_top > 0 ) { points[3] = new_top/2 }
 					let new_pars = Object.assign(can_draw_selected.pars,{ 'points': points })
 					parameters_update(new_pars)
-				} else if ( (can_draw_selected.shape === 'polygon') || (can_draw_selected.shape === 'star') ) {
+				} else if ( (can_draw_selected.shape === 'star') ) {
 					let points = draw_cautious.change_star_radius(can_draw_selected,canvas_mouse,draw_delta_x,draw_delta_y)
 					let new_pars = Object.assign(can_draw_selected.pars,{ 'points': points })
 					parameters_update(new_pars)
@@ -1082,11 +1118,16 @@
 						}
 						case 'polygon' : {
 							if ( xchange|| ychange ) {
+								/*
 								let sw = dx
 								let sh = dy
 								let area_prior = target_draw_shape.bounds[2]*target_draw_shape.bounds[3]
 								let sign = (select_width*select_height < area_prior) ? -1 : 1
-								points[2] += sign*Math.sqrt(sw*sw + sh*sh)
+								points[2] += sw/2 //sign*Math.sqrt(sw*sw + sh*sh)
+								points[3] += sh/2
+								*/
+								if ( xchange ) points[2] = select_width/2
+								if ( ychange ) points[3] = select_height/2
 							}
 							break;
 						}
@@ -1172,7 +1213,12 @@
 
 
 	async function startup_new_text() {
-		draw_control.add("text",{ "thick" : tool_parameters.parameters.thick, "line" : tool_parameters.parameters.line, "fill" : tool_parameters.parameters.fill, "points" : [text_loc.x,text_loc.y], 
+		draw_control.add("text",{ "id" : gen_id(),
+									"included_views" : {},
+									"thick" : tool_parameters.parameters.thick, 
+									"line" : tool_parameters.parameters.line, 
+									"fill" : tool_parameters.parameters.fill, 
+									"points" : [text_loc.x,text_loc.y], 
 									"text" : text_value, "font": tool_parameters.parameters.font,
 									"textAlign" : "center", "textBaseline" : "middle"
 								})
@@ -1462,7 +1508,13 @@
 			selection_on = false
 			set_selection_controls(false)
 			drawing = true
-			draw_control.add("rect",{ "thick" : tool_parameters.parameters.thick, "line" : tool_parameters.parameters.line, "fill" : tool_parameters.parameters.fill, "points" : [mouse_x,mouse_y,2,2] })
+			draw_control.add("rect",{ 
+				"id" : gen_id(),
+				"included_views" : {},
+				"thick" : tool_parameters.parameters.thick, 
+				"line" : tool_parameters.parameters.line, 
+				"fill" : tool_parameters.parameters.fill, 
+				"points" : [mouse_x,mouse_y,2,2] })
 			change_selection("select_top")
 		} else if ( is_text(tool) ) {
 			selection_on = false
@@ -1476,16 +1528,23 @@
 			drawing = true
 			tool_parameters.parameters.points = [mouse_x,mouse_y,2,2]
 			let pars = object_clone(tool_parameters.parameters)
+			pars.id = gen_id()
+			pars.included_views = {}
 			draw_control.add(tool_parameters.shape,pars)
 			change_selection("select_top")
 			//
-		} else if ( !( tool === 'select' ) && is_line(shape) ) {
+		} else if ( ( tool === "pencil" ) && is_line(shape) ) {
+			selection_on = false			
 			selection_on = false
 			set_selection_controls(false)
 			drawing = true
-			tool_parameters.parameters.points = [mouse_x,mouse_y,mouse_x+2,mouse_y+2]
-			let pars = object_clone(tool_parameters.parameters)
-			draw_control.add(tool_parameters.shape,pars)
+			draw_control.add("line",{
+				"id" : gen_id(),
+				"included_views" : {},
+				"thick" : tool_parameters.parameters.thick, 
+				"line" : tool_parameters.parameters.line, 
+				"fill" : tool_parameters.parameters.fill,
+				"points" : [mouse_x,mouse_y,2,2] })
 			change_selection("select_top")
 		} else if ( is_component(tool) ) {
 			selection_on = false

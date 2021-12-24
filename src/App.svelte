@@ -105,6 +105,9 @@
 
 	let edit_mode = 'panel'
 	let prev_edit_mode = edit_mode
+	let show_on_panel = false
+	let show_on_design = false
+	let show_on_causal = false
 
 
 	let g_current_selection_object = false
@@ -123,8 +126,6 @@
 		'width' : 8,
 		'height' : 28
 	}
-
-
 
 
 	let magnification = 100
@@ -581,7 +582,7 @@
 	let line_names = ["x1", "y1", "x2", "y2"]
 	let connector_names = ["x1", "y1", "x2", "y2"]
 	let path_names = ["x", "y"]
-	let polygon_names = ["x", "y", "r", "sides"]
+	let polygon_names = ["x", "y", "rx", "ry", "sides"]
 	let star_names = ["x", "y", "r", "points", "pointiness", "radial-shift", "radius-multiplier"]
 	let component_names = ["x", "y", "w", "h"]
 	let transition_names = ["x", "y"]
@@ -638,7 +639,8 @@
 		let points = pars.points
 		object_x = points[0]
 		object_y = points[1]
-		object_r = points[2]
+		object_rx = points[2]
+		object_ry = points[3]
 		object_sides = pars.sides
 	}
 	function set_star_fields(pars) {
@@ -752,6 +754,16 @@
 		return false
 	}
 
+
+	function is_pure_shape() {
+		if ( g_current_shape ) {
+			if ( ( g_current_selection_object.role !== 'component' ) && ( g_current_selection_object.role !== 'connector' ) ) {
+				return true
+			}
+		}
+		return false
+	}
+
 	function tool_to_shape(tool) { 
 		switch ( tool ) {
 			case "ellipse" : {
@@ -768,7 +780,8 @@
 				if ( g_regular_shape ) {
 					return "line" //"square"
 				} else {
-					return "path"
+					return "line" //"square"
+//					return "path"
 				}
 			}
 			case "pen": {
@@ -834,6 +847,7 @@
 				points.push(g_generalized_parameters[`object_${polygon_names[0]}`])
 				points.push(g_generalized_parameters[`object_${polygon_names[1]}`])
 				points.push(g_generalized_parameters[`object_${polygon_names[2]}`])
+				points.push(g_generalized_parameters[`object_${polygon_names[3]}`])
 				break
 			}
 			case "star" : {
@@ -929,6 +943,80 @@
 				}
 			}
 			add_shape_extras(shape,g_current_parameters.parameters)
+		}
+	}
+
+
+	$: {
+		let and_also_panel = false
+		let and_also_design = false
+		let and_also_causal =  false
+		//
+		if ( g_current_selection_object && g_current_selection_object.included_views ) {
+			and_also_panel = g_current_selection_object.included_views['panel']
+			and_also_design = g_current_selection_object.included_views['design']
+			and_also_causal = g_current_selection_object.included_views['causal']
+		} else {
+			show_on_panel = false
+			show_on_design = false
+			show_on_causal = false
+		}
+
+		if ( edit_mode === 'panel' ) {
+			show_on_panel = true
+			show_on_design = and_also_design
+			show_on_causal = and_also_causal
+		}
+		if ( edit_mode === 'design' ) {
+			show_on_design = true
+			show_on_panel = and_also_panel			
+			show_on_causal = and_also_causal
+		}
+		if ( edit_mode === 'causal' ) {
+			show_on_causal = true
+			show_on_panel = and_also_panel			
+			show_on_design = and_also_design
+		}
+	}
+
+
+	async function toggle_panel_view(evt) {
+		let checked = evt.target.checked
+		if ( g_current_selection_object ) {
+			if ( g_current_selection_object.included_views === undefined ) {
+				g_current_selection_object.included_views = {}
+			}
+			g_current_selection_object.included_views['panel'] = checked
+			await tick()
+			if ( edit_mode !== 'panel' ) {
+				commander.command("update_view_exposure",{ "descriptor" : g_current_selection_object, "mode" : "panel", "include" : checked })
+			}
+		}
+	}
+	async function toggle_design_view(evt) {
+		let checked = evt.target.checked
+		if ( g_current_selection_object ) {
+			if ( g_current_selection_object.included_views === undefined ) {
+				g_current_selection_object.included_views = {}
+			}
+			g_current_selection_object.included_views['design'] = checked
+			await tick()
+			if ( edit_mode !== 'design' ) {
+				commander.command("update_view_exposure",{ "descriptor" : g_current_selection_object, "mode" : "design", "include" : checked })
+			}
+		}
+	}
+	async function toggle_causal_view(evt) {
+		let checked = evt.target.checked
+		if ( g_current_selection_object ) {
+			if ( g_current_selection_object.included_views === undefined ) {
+				g_current_selection_object.included_views = {}
+			}
+			g_current_selection_object.included_views['causal'] = checked
+			await tick()
+			if ( edit_mode !== 'causal' ) {
+				commander.command("update_view_exposure",{ "descriptor" : g_current_selection_object, "mode" : "causal", "include" : checked })
+			}
 		}
 	}
 
@@ -1701,7 +1789,15 @@ let object_text_size = 32
 		<button class="bottom-button" on:click={ () => { toggle_float("connection-editor") } } >connector properties</button>
 	{/if}
 
+	{#if (g_selector || g_free_mode) && is_pure_shape() }
+		<span class="top-text" >shows on:</span>
+		<input type="checkbox" name="view-scope" bind:checked={show_on_panel} on:click={toggle_panel_view} > <span class="top-text" >panel</span>
+		<input type="checkbox" name="view-scope" bind:checked={show_on_design} on:click={toggle_design_view} > <span class="top-text" >design</span>
+		<input type="checkbox" name="view-scope" bind:checked={show_on_causal} on:click={toggle_causal_view} > <span class="top-text" >causal</span>
+	{/if}
+
 </div>
+
 
 <div bind:this={g_canvas_system} class="canvas-system" on:scroll={scroll_rulers}>
 	<div bind:this={g_canvas_container} class="canvas-panel" style="width:{g_calc_container_width}px;height:{g_calc_container_height}px;cursor:{tool_cursor}" >
