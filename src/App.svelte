@@ -26,6 +26,15 @@
 	import { commander, g_commander } from './edit_commands'
 	import { g_select_parameters } from './param_updates'
 
+/*
+
+	// https://www.npmjs.com/package/web-push
+
+	// ThinLTO
+
+	// https://github.com/ecomfe/zrender
+	// https://github.com/apache/echarts   -- apache foundation
+
 	// https://github.com/agrinko/js-undo-manager
 	// https://github.com/dnass/svelte-canvas
 
@@ -39,6 +48,10 @@
 // https://www.tutorialrepublic.com/html-tutorial/html5-canvas.php
 // https://github.com/ericdrowell/concrete
 // https://www.sciencedirect.com/science/article/pii/B9781483214481500184
+
+// convert html to simple svg for a graphic preview
+// https://github.com/hasankzl/htmlsvg
+*/
 
 	let project_selected = false
 	let g_db_store = null
@@ -953,7 +966,6 @@
 		let and_also_causal =  false
 		//
 		if ( g_current_selection_object && g_current_selection_object.included_views ) {
-	console.log(g_current_selection_object.included_views)
 			let view_it = g_current_selection_object.included_views['panel']
 			and_also_panel = (view_it === undefined) ? false : view_it
 			//
@@ -983,6 +995,7 @@
 			show_on_panel = and_also_panel			
 			show_on_design = and_also_design
 		}
+		// deselect ... same as clicking on no object....
 	}
 
 

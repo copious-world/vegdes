@@ -719,6 +719,9 @@
         last_name = drawing_name
         draw_control = set_drawing(drawing_name)
         draw_control.command("clear_all")
+		// draw_control allows for special parameters to be passed and placed in the parent shape descriptor
+		// These are custom for the application ... defaults are "id" and "role"
+		draw_control.command("set_lifted",{ "lifted" : [ "included_views", "function" ] })
     }
 
 	//let change_count = 0
@@ -1592,6 +1595,9 @@
 			set_selection_controls(false)
 			drawing = true
 			let a_function = "com"	// otheriwse pre_arc or post_arc
+			if ( g_edit_mode === "causal" ) {
+				a_function = "arc"
+			}
 			draw_control.add("line",{
 				"role" : "connector",
 				"function" : a_function,

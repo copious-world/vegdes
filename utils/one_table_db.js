@@ -114,8 +114,8 @@ export class AppDBWrapper {
 
 
     // // // // // // // // // // // // // // // // // // // // // // // // // // // // 
-
-    //      load_name_list
+    
+    //      load_name_list -- a list of session names
     // -- 
     load_name_list() {
         if ( !(this.db) ) return
